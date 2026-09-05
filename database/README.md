@@ -12,19 +12,17 @@
 6. Run `node createAdmin.js`.
 7. Start with `npm start`.
 
-## Upgrade from v0.3 to v0.4
+## Upgrade from v0.4 to v0.5
 
-v0.4 introduces two new tables:
-
-- `inventory_counts`
-- `inventory_count_items`
-
-For an existing v0.3 database, run:
+Run once in HeidiSQL:
 
 ```text
-database/upgrade-v0.3-to-v0.4.sql
+database/upgrade-v0.4-to-v0.5.sql
 ```
 
-once in HeidiSQL before starting StockFlow v0.4.
+This creates:
 
-No JavaScript migration scripts are used.
+- `warehouse_locations`
+- `saved_views`
+
+No JavaScript migration files are used.

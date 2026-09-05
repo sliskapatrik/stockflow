@@ -37,6 +37,7 @@
             <button class="nav-item" data-view="warehouses">Warehouses</button>
             <button class="nav-item" data-view="movements">Stock Movements</button>
             <button class="nav-item" data-view="inventory">Inventory Operations</button>
+            <button class="nav-item" data-view="productivity">Scanner & Productivity</button>
             <button class="nav-item" data-view="suppliers">Suppliers</button>
             <button class="nav-item" data-view="orders">Purchase Orders</button>
         </nav>
@@ -187,6 +188,81 @@
                     </div>
                 </div>
                 <div id="stockAuditList" class="data-list"></div>
+            </div>
+        </section>
+
+
+        <section class="view" id="productivityView">
+            <div class="productivity-grid">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h2>Barcode / SKU Lookup</h2>
+                            <p>Scan or type a barcode, SKU, product name, location code or QR identifier.</p>
+                        </div>
+                    </div>
+
+                    <input id="quickLookupInput"
+                           type="search"
+                           placeholder="Scan barcode / QR or type SKU, product, location..."
+                           autocomplete="off">
+
+                    <div id="quickLookupResults" class="data-list lookup-results"></div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h2>Quick Stock Movement</h2>
+                            <p>Fast receipt or issue after product lookup.</p>
+                        </div>
+                    </div>
+
+                    <form id="quickMovementForm">
+                        <label for="quickMovementProduct">Product</label>
+                        <select id="quickMovementProduct" required></select>
+
+                        <label for="quickMovementWarehouse">Warehouse</label>
+                        <select id="quickMovementWarehouse" required></select>
+
+                        <label for="quickMovementType">Operation</label>
+                        <select id="quickMovementType">
+                            <option value="receipt">Quick Receipt</option>
+                            <option value="issue">Quick Issue</option>
+                        </select>
+
+                        <label for="quickMovementQuantity">Quantity</label>
+                        <input id="quickMovementQuantity" type="number" min="0.001" step="0.001" value="1" required>
+
+                        <label for="quickMovementNote">Note</label>
+                        <input id="quickMovementNote" placeholder="Optional reference">
+
+                        <div class="modal-actions">
+                            <button type="submit" class="primary-button">Post Movement</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="panel productivity-wide">
+                    <div class="panel-header">
+                        <div>
+                            <h2>Warehouse Locations / QR</h2>
+                            <p>Create internal locations such as racks, zones and bins with scan-friendly QR identifiers.</p>
+                        </div>
+                        <button class="primary-button" id="addLocationButton">+ Location</button>
+                    </div>
+                    <div id="locationList" class="data-list"></div>
+                </div>
+
+                <div class="panel productivity-wide">
+                    <div class="panel-header">
+                        <div>
+                            <h2>Saved Views</h2>
+                            <p>Save frequently used Product and Movement filters.</p>
+                        </div>
+                    </div>
+                    <div id="savedViewList" class="data-list"></div>
+                </div>
             </div>
         </section>
 
@@ -485,6 +561,44 @@
             <button class="icon-button" data-close-modal="inventoryCountDetailModal">×</button>
         </div>
         <div id="inventoryCountDetailContent"></div>
+    </div>
+</div>
+
+
+<!-- WAREHOUSE LOCATION MODAL -->
+<div class="modal" id="locationModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="locationModalTitle">New Warehouse Location</h2>
+            <button class="icon-button" data-close-modal="locationModal">×</button>
+        </div>
+
+        <form id="locationForm">
+            <input type="hidden" id="locationId">
+
+            <label for="locationWarehouse">Warehouse</label>
+            <select id="locationWarehouse" required></select>
+
+            <label for="locationCode">Location code</label>
+            <input id="locationCode" placeholder="A-01-03" required>
+
+            <label for="locationQrCode">QR identifier</label>
+            <input id="locationQrCode" placeholder="LOC-A-01-03">
+
+            <label for="locationName">Name</label>
+            <input id="locationName" placeholder="Rack A / Shelf 01 / Bin 03" required>
+
+            <label for="locationStatus">Status</label>
+            <select id="locationStatus">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+
+            <div class="modal-actions">
+                <button type="button" class="secondary-button" data-close-modal="locationModal">Cancel</button>
+                <button type="submit" class="primary-button">Save Location</button>
+            </div>
+        </form>
     </div>
 </div>
 

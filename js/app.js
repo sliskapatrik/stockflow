@@ -20,6 +20,9 @@ let orders = [];
 let currentOrderDetail = null;
 let inventoryCounts = [];
 let currentInventoryCount = null;
+let warehouseLocations = [];
+let savedViews = [];
+let selectedLookupProductId = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -140,7 +143,8 @@ const viewTitles = {
     movements: ["Stock Movements", "Receipts, issues, adjustments and transfers"],
     suppliers: ["Suppliers", "Supplier directory"],
     orders: ["Purchase Orders", "Purchasing workflow"],
-    inventory: ["Inventory Operations", "Physical counts, reorder suggestions and stock audit"]
+    inventory: ["Inventory Operations", "Physical counts, reorder suggestions and stock audit"],
+    productivity: ["Scanner & Productivity", "Barcode, QR, quick stock lookup and saved views"]
 };
 
 document.querySelectorAll(".nav-item").forEach((button) => {
@@ -168,6 +172,7 @@ document.querySelectorAll(".nav-item").forEach((button) => {
         if (name === "suppliers") await loadSuppliers();
         if (name === "orders") await loadOrders();
         if (name === "inventory") await loadInventoryOperations();
+        if (name === "productivity") await loadProductivity();
     });
 });
 
@@ -1471,3 +1476,417 @@ function formatInventoryStatus(status) {
         completed: "Completed"
     }[status] || status;
 }
+
+
+/* SCANNER & PRODUCTIVITY */
+
+async function loadProductivity() {
+    await Promise.all([
+        loadWarehouseLocations(),
+        loadSavedViews()
+    ]);
+
+    fillQuickMovementSelectors();
+    fillLocationWarehouseSelector();
+}
+
+function fillQuickMovementSelectors() {
+    if ($("quickMovementProduct")) {
+        $("quickMovementProduct").innerHTML = products
+            .filter((item) => item.status === "active")
+            .map((product) =>
+                `<option value="${product.id}">${escapeHtml(product.sku)} - ${escapeHtml(product.name)}</option>`
+            ).join("");
+
+        if (selectedLookupProductId) {
+            $("quickMovementProduct").value = selectedLookupProductId;
+        }
+    }
+
+    if ($("quickMovementWarehouse")) {
+        $("quickMovementWarehouse").innerHTML = warehouses
+            .filter((item) => item.status === "active")
+            .map((warehouse) =>
+                `<option value="${warehouse.id}">${escapeHtml(warehouse.code)} - ${escapeHtml(warehouse.name)}</option>`
+            ).join("");
+    }
+}
+
+let lookupTimer = null;
+
+$("quickLookupInput")?.addEventListener("input", () => {
+    clearTimeout(lookupTimer);
+    lookupTimer = setTimeout(runQuickLookup, 180);
+});
+
+$("quickLookupInput")?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        clearTimeout(lookupTimer);
+        runQuickLookup();
+    }
+});
+
+async function runQuickLookup() {
+    const query = $("quickLookupInput").value.trim();
+    const container = $("quickLookupResults");
+
+    if (!query) {
+        container.innerHTML = "";
+        return;
+    }
+
+    try {
+        const response = await authFetch(
+            `${API_URL}/productivity/lookup?q=${encodeURIComponent(query)}`
+        );
+
+        const data = await readApi(response);
+
+        const productHtml = data.products.map((product) => `
+            <button class="lookup-result-button" data-lookup-product="${product.id}">
+                <strong>${escapeHtml(product.sku)} - ${escapeHtml(product.name)}</strong>
+                <div class="card-meta">
+                    ${product.barcode ? `<span>Barcode: ${escapeHtml(product.barcode)}</span>` : ""}
+                    <span>Total stock: ${formatQuantity(product.totalStock)} ${escapeHtml(product.unit)}</span>
+                </div>
+                <div class="stock-breakdown" id="lookup-stock-${product.id}"></div>
+            </button>
+        `).join("");
+
+        const locationHtml = data.locations.map((location) => `
+            <div class="data-card">
+                <div>
+                    <h3>${escapeHtml(location.code)} - ${escapeHtml(location.name)}</h3>
+                    <p>${escapeHtml(location.warehouseCode)} - ${escapeHtml(location.warehouseName)}</p>
+                </div>
+                <div class="card-actions">
+                    <span class="qr-box">${escapeHtml(location.qrCode)}</span>
+                </div>
+            </div>
+        `).join("");
+
+        container.innerHTML =
+            (productHtml || locationHtml)
+                ? productHtml + locationHtml
+                : `<div class="empty-state">No product or warehouse location found.</div>`;
+
+        container.querySelectorAll("[data-lookup-product]").forEach((button) => {
+            button.addEventListener("click", async () => {
+                selectedLookupProductId = button.dataset.lookupProduct;
+                fillQuickMovementSelectors();
+                await loadProductStockBreakdown(selectedLookupProductId);
+            });
+        });
+
+        if (data.products.length === 1) {
+            selectedLookupProductId = data.products[0].id;
+            fillQuickMovementSelectors();
+            await loadProductStockBreakdown(selectedLookupProductId);
+        }
+    } catch (error) {
+        container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    }
+}
+
+async function loadProductStockBreakdown(productId) {
+    try {
+        const response = await authFetch(`${API_URL}/productivity/products/${productId}/stock`);
+        const rows = await readApi(response);
+        const container = $(`lookup-stock-${productId}`);
+
+        if (!container) return;
+
+        container.innerHTML = rows.map((row) =>
+            `<span class="stock-pill">${escapeHtml(row.warehouseCode)}: ${formatQuantity(row.quantity)}</span>`
+        ).join("");
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+$("quickMovementForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    try {
+        const response = await authFetch(`${API_URL}/productivity/quick-movement`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                productId: $("quickMovementProduct").value,
+                warehouseId: $("quickMovementWarehouse").value,
+                movementType: $("quickMovementType").value,
+                quantity: Number($("quickMovementQuantity").value),
+                note: $("quickMovementNote").value.trim()
+            })
+        });
+
+        await readApi(response);
+
+        $("quickMovementQuantity").value = "1";
+        $("quickMovementNote").value = "";
+
+        await Promise.all([
+            loadProducts(),
+            loadWarehouses(),
+            loadDashboard(),
+            loadMovements(),
+            loadStockAudit(),
+            loadReorderSuggestions()
+        ]);
+
+        if ($("quickLookupInput").value.trim()) {
+            await runQuickLookup();
+        }
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+/* LOCATIONS / QR */
+
+async function loadWarehouseLocations() {
+    try {
+        const response = await authFetch(`${API_URL}/productivity/locations`);
+        warehouseLocations = await readApi(response);
+        renderWarehouseLocations();
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function renderWarehouseLocations() {
+    const container = $("locationList");
+    if (!container) return;
+
+    if (!warehouseLocations.length) {
+        container.innerHTML = `<div class="empty-state">No warehouse locations yet.</div>`;
+        return;
+    }
+
+    container.innerHTML = warehouseLocations.map((location) => `
+        <div class="data-card">
+            <div>
+                <h3>${escapeHtml(location.code)} - ${escapeHtml(location.name)}</h3>
+                <p>${escapeHtml(location.warehouseCode)} - ${escapeHtml(location.warehouseName)}</p>
+            </div>
+            <div class="card-actions">
+                <span class="qr-box">${escapeHtml(location.qrCode)}</span>
+                <span class="badge ${escapeHtml(location.status)}">${escapeHtml(location.status)}</span>
+                <button class="secondary-button" data-edit-location="${location.id}">Edit</button>
+            </div>
+        </div>
+    `).join("");
+
+    container.querySelectorAll("[data-edit-location]").forEach((button) => {
+        button.addEventListener("click", () => editWarehouseLocation(button.dataset.editLocation));
+    });
+}
+
+function fillLocationWarehouseSelector() {
+    if (!$("locationWarehouse")) return;
+
+    $("locationWarehouse").innerHTML = warehouses
+        .filter((item) => item.status === "active")
+        .map((warehouse) =>
+            `<option value="${warehouse.id}">${escapeHtml(warehouse.code)} - ${escapeHtml(warehouse.name)}</option>`
+        ).join("");
+}
+
+$("addLocationButton")?.addEventListener("click", () => {
+    $("locationForm").reset();
+    $("locationId").value = "";
+    $("locationStatus").value = "active";
+    $("locationModalTitle").textContent = "New Warehouse Location";
+    fillLocationWarehouseSelector();
+    openModal("locationModal");
+});
+
+function editWarehouseLocation(id) {
+    const location = warehouseLocations.find((item) => item.id === id);
+    if (!location) return;
+
+    fillLocationWarehouseSelector();
+
+    $("locationId").value = location.id;
+    $("locationWarehouse").value = location.warehouseId;
+    $("locationCode").value = location.code;
+    $("locationQrCode").value = location.qrCode;
+    $("locationName").value = location.name;
+    $("locationStatus").value = location.status;
+    $("locationModalTitle").textContent = "Edit Warehouse Location";
+    openModal("locationModal");
+}
+
+$("locationCode")?.addEventListener("input", () => {
+    if (!$("locationId").value && !$("locationQrCode").value) {
+        $("locationQrCode").value = `LOC-${$("locationCode").value.trim()}`;
+    }
+});
+
+$("locationForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const id = $("locationId").value;
+
+    const data = {
+        warehouseId: $("locationWarehouse").value,
+        code: $("locationCode").value.trim(),
+        qrCode: $("locationQrCode").value.trim(),
+        name: $("locationName").value.trim(),
+        status: $("locationStatus").value
+    };
+
+    try {
+        const response = await authFetch(
+            id
+                ? `${API_URL}/productivity/locations/${id}`
+                : `${API_URL}/productivity/locations`,
+            {
+                method: id ? "PUT" : "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            }
+        );
+
+        await readApi(response);
+        closeModal("locationModal");
+        await loadWarehouseLocations();
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+/* SAVED VIEWS */
+
+async function loadSavedViews() {
+    try {
+        const response = await authFetch(`${API_URL}/productivity/saved-views`);
+        savedViews = await readApi(response);
+        renderSavedViews();
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function renderSavedViews() {
+    const container = $("savedViewList");
+    if (!container) return;
+
+    if (!savedViews.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                No saved views yet. Save the current Product search or Movement filters from their pages.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = savedViews.map((view) => `
+        <div class="data-card">
+            <div>
+                <h3>${escapeHtml(view.name)}</h3>
+                <p>${escapeHtml(view.viewType)}</p>
+            </div>
+            <div class="saved-view-actions">
+                <button class="secondary-button" data-apply-view="${view.id}">Apply</button>
+                <button class="danger-button" data-delete-view="${view.id}">Delete</button>
+            </div>
+        </div>
+    `).join("");
+
+    container.querySelectorAll("[data-apply-view]").forEach((button) => {
+        button.addEventListener("click", () => applySavedView(button.dataset.applyView));
+    });
+
+    container.querySelectorAll("[data-delete-view]").forEach((button) => {
+        button.addEventListener("click", () => deleteSavedView(button.dataset.deleteView));
+    });
+}
+
+async function saveCurrentView(viewType) {
+    const name = prompt("Saved view name:");
+    if (!name) return;
+
+    let filters = {};
+
+    if (viewType === "products") {
+        filters.search = $("productSearch").value.trim();
+    }
+
+    if (viewType === "movements") {
+        filters.warehouseId = $("movementWarehouseFilter").value;
+        filters.type = $("movementTypeFilter").value;
+    }
+
+    try {
+        const response = await authFetch(`${API_URL}/productivity/saved-views`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ viewType, name, filters })
+        });
+
+        await readApi(response);
+        await loadSavedViews();
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+async function applySavedView(id) {
+    const view = savedViews.find((item) => item.id === id);
+    if (!view) return;
+
+    if (view.viewType === "products") {
+        document.querySelector('[data-view="products"]').click();
+        $("productSearch").value = view.filters.search || "";
+        await loadProducts();
+    }
+
+    if (view.viewType === "movements") {
+        document.querySelector('[data-view="movements"]').click();
+        $("movementWarehouseFilter").value = view.filters.warehouseId || "";
+        $("movementTypeFilter").value = view.filters.type || "";
+        await loadMovements();
+    }
+}
+
+async function deleteSavedView(id) {
+    try {
+        const response = await authFetch(`${API_URL}/productivity/saved-views/${id}`, {
+            method: "DELETE"
+        });
+
+        await readApi(response);
+        await loadSavedViews();
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+
+function ensureSavedViewButtons() {
+    const productsToolbar = $("productSearch")?.closest(".toolbar");
+    if (productsToolbar && !document.getElementById("saveProductViewButton")) {
+        const button = document.createElement("button");
+        button.id = "saveProductViewButton";
+        button.className = "secondary-button";
+        button.type = "button";
+        button.textContent = "Save View";
+        button.addEventListener("click", () => saveCurrentView("products"));
+        productsToolbar.appendChild(button);
+    }
+
+    const movementToolbar = $("movementWarehouseFilter")?.closest(".toolbar");
+    if (movementToolbar && !document.getElementById("saveMovementViewButton")) {
+        const button = document.createElement("button");
+        button.id = "saveMovementViewButton";
+        button.className = "secondary-button";
+        button.type = "button";
+        button.textContent = "Save View";
+        button.addEventListener("click", () => saveCurrentView("movements"));
+        movementToolbar.appendChild(button);
+    }
+}
+
+setTimeout(ensureSavedViewButtons, 0);
