@@ -1,81 +1,68 @@
 require("dotenv").config();
 
-const bcrypt =
-    require("bcryptjs");
+const bcrypt = require("bcryptjs");
+const db = require("./database");
 
-const crypto =
-    require("crypto");
-
-const db =
-    require("./database");
-
-async function createAdmin() {
+async function resetAdminPassword() {
     try {
-        const name =
-            "StockFlow Admin";
-
         const email =
             "admin@stockflow.local";
 
-        const password =
+        const newPassword =
             "ChangeMe123!";
 
         const passwordHash =
             await bcrypt.hash(
-                password,
+                newPassword,
                 12
             );
 
-        await db.query(
-            `
-            INSERT INTO users (
-                id,
-                name,
-                email,
-                password_hash,
-                role,
-                status
-            )
-            VALUES (?, ?, ?, ?, 'admin', 'active')
-            `,
-            [
-                crypto.randomUUID(),
-                name,
-                email,
-                passwordHash
-            ]
-        );
+        const [result] =
+            await db.query(
+                `
+                UPDATE users
+                SET
+                    password_hash = ?,
+                    role = 'admin',
+                    status = 'active'
+                WHERE email = ?
+                `,
+                [
+                    passwordHash,
+                    email
+                ]
+            );
 
-        console.log(
-            "StockFlow admin created."
-        );
-
-        console.log(
-            "Email:",
-            email
-        );
-
-        console.log(
-            "Temporary password:",
-            password
-        );
-    } catch (error) {
         if (
-            error.code ===
-            "ER_DUP_ENTRY"
+            result.affectedRows === 0
         ) {
             console.log(
-                "StockFlow admin already exists."
+                "Admin account was not found."
             );
         } else {
-            console.error(
-                "Could not create admin:",
-                error
+            console.log(
+                "StockFlow admin password reset successfully."
+            );
+
+            console.log(
+                "Email:",
+                email
+            );
+
+            console.log(
+                "Password:",
+                newPassword
             );
         }
+
+    } catch (error) {
+        console.error(
+            "Could not reset admin password:",
+            error
+        );
     } finally {
         await db.end();
     }
 }
 
-createAdmin();
+resetAdminPassword();

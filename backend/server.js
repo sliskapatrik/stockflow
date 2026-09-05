@@ -1,48 +1,30 @@
 require("dotenv").config();
 
-const path =
-    require("path");
+const path = require("path");
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
 
-const express =
-    require("express");
+const db = require("./database");
+const authRoutes = require("./authRoutes");
+const productsRoutes = require("./routes/productsRoutes");
+const warehousesRoutes = require("./routes/warehousesRoutes");
+const movementsRoutes = require("./routes/movementsRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 
-const cors =
-    require("cors");
+const app = express();
+const PORT = process.env.PORT || 3100;
 
-const helmet =
-    require("helmet");
-
-const db =
-    require("./database");
-
-const authRoutes =
-    require("./authRoutes");
-
-const app =
-    express();
-
-const PORT =
-    process.env.PORT || 3100;
-
-app.set(
-    "trust proxy",
-    1
-);
-
-app.disable(
-    "x-powered-by"
-);
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
 
 app.use(
     helmet({
-        contentSecurityPolicy:
-            false
+        contentSecurityPolicy: false
     })
 );
 
-app.use(
-    cors()
-);
+app.use(cors());
 
 app.use(
     express.json({
@@ -50,81 +32,58 @@ app.use(
     })
 );
 
-app.use(
-    "/api/auth",
-    authRoutes
-);
+app.use("/api/auth", authRoutes);
+app.use("/api/products", productsRoutes);
+app.use("/api/warehouses", warehousesRoutes);
+app.use("/api/movements", movementsRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
-app.get(
-    "/health",
-    async function (req, res) {
-        try {
-            await db.query(
-                "SELECT 1"
-            );
+app.get("/health", async function (req, res) {
+    try {
+        await db.query("SELECT 1");
 
-            res.json({
-                status: "ok",
-                database:
-                    "connected"
-            });
-        } catch (error) {
-            res.status(503).json({
-                status:
-                    "error",
-                database:
-                    "disconnected"
-            });
-        }
-    }
-);
-
-app.get(
-    "/api/status",
-    function (req, res) {
         res.json({
-            success: true,
-            message:
-                "StockFlow backend is online"
+            status: "ok",
+            database: "connected",
+            version: "0.2.0"
+        });
+    } catch (error) {
+        res.status(503).json({
+            status: "error",
+            database: "disconnected",
+            version: "0.2.0"
         });
     }
-);
+});
 
-const frontendPath =
-    path.join(__dirname, "..");
+app.get("/api/status", function (req, res) {
+    res.json({
+        success: true,
+        message: "StockFlow backend is online",
+        version: "0.2.0"
+    });
+});
 
-app.use(
-    express.static(
-        frontendPath
-    )
-);
+const frontendPath = path.join(__dirname, "..");
 
-app.use(
-    function (req, res, next) {
-        if (
-            req.method === "GET" &&
-            !req.path.startsWith(
-                "/api/"
-            ) &&
-            req.path !== "/health"
-        ) {
-            return res.sendFile(
-                path.join(
-                    frontendPath,
-                    "index.html"
-                )
-            );
-        }
+app.use(express.static(frontendPath));
 
-        next();
+app.use(function (req, res, next) {
+    if (
+        req.method === "GET" &&
+        !req.path.startsWith("/api/") &&
+        req.path !== "/health"
+    ) {
+        return res.sendFile(path.join(frontendPath, "index.html"));
     }
-);
 
-app.listen(
-    PORT,
-    function () {
-        console.log(
-            `StockFlow running on http://localhost:${PORT}`
-        );
-    }
-);
+    next();
+});
+
+app.use("/api", function (req, res) {
+    res.status(404).json({ error: "API endpoint not found" });
+});
+
+app.listen(PORT, function () {
+    console.log(`StockFlow v0.2 running on http://localhost:${PORT}`);
+});

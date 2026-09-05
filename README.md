@@ -1,138 +1,105 @@
 # StockFlow
 
-StockFlow is a full-stack inventory, warehouse and purchasing management system.
+StockFlow is a full-stack inventory, warehouse and purchasing management system built with Node.js, Express, MySQL/MariaDB and vanilla JavaScript.
 
-## v0.1 Foundation
+## v0.2 – Products, Warehouses & Stock
 
-The first phase contains:
+This phase adds the first complete inventory workflow.
 
-- Node.js / Express backend
-- MySQL / MariaDB connection
-- JWT authentication
-- bcrypt password hashing
-- role-ready authentication model
-- responsive application shell
-- Dashboard
-- Products module placeholder
-- Warehouses module placeholder
-- Stock Movements module placeholder
-- Suppliers module placeholder
-- Purchase Orders module placeholder
-- complete initial database schema
-- initial administrator creation script
-- `/health` endpoint
-- Git-ready project structure
+### Products
 
-## Planned Roles
+- create products
+- edit products
+- SKU
+- optional barcode
+- product description
+- unit
+- purchase price
+- reorder level
+- active / inactive status
+- total stock across all warehouses
+- low-stock indication
+- search by SKU, barcode or name
+- safe deletion for products without stock history
+
+### Warehouses
+
+- create warehouses
+- edit warehouses
+- warehouse code
+- warehouse name
+- address
+- active / inactive status
+- product count per warehouse
+- total warehouse quantity
+
+### Stock Movements
+
+Supported movements:
+
+- Receipt
+- Issue
+- Adjustment In
+- Adjustment Out
+- Warehouse Transfer
+
+Stock cannot become negative.
+
+Warehouse transfers are transactional:
+
+1. stock leaves the source warehouse
+2. stock enters the destination warehouse
+3. both movements share one transfer reference
+4. the whole operation rolls back if any step fails
+
+### Dashboard
+
+The dashboard now uses real database data:
+
+- active product count
+- total stock
+- low-stock product count
+- active warehouse count
+- low-stock product list
+
+### Roles
 
 - Admin
 - Warehouse
 - Purchasing
 
-## Planned Core Features
+Admin can manage warehouses and delete products where safe.
+Warehouse users are prepared to manage inventory operations.
+Purchasing will become active in v0.3.
 
-- Products and SKUs
-- Barcodes
-- Multi-warehouse stock
-- Receipts and issues
-- Warehouse transfers
-- Inventory adjustments
-- Suppliers
-- Purchase orders
-- Partial receipts
-- Low-stock alerts
-- Reorder levels
-- Audit history
-- Reporting
-- CSV exports
-- barcode / QR workflow
+## Database
 
-## Technology
+`database/schema.sql` contains the complete fresh-install schema.
 
-- HTML
-- CSS
-- Vanilla JavaScript
-- Node.js
-- Express
-- MySQL / MariaDB
-- JWT
-- bcryptjs
+Upgrade from v0.1 requires no mandatory table or column changes because the initial schema already included the core inventory tables.
 
-## Local Setup
-
-Create a database:
-
-```sql
-CREATE DATABASE stockflow
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_unicode_ci;
-```
-
-Create a dedicated user, for example:
-
-```sql
-CREATE USER 'stockflow'@'localhost'
-IDENTIFIED BY 'YOUR_PASSWORD';
-
-GRANT ALL PRIVILEGES
-ON stockflow.*
-TO 'stockflow'@'localhost';
-
-FLUSH PRIVILEGES;
-```
-
-Import:
-
-```text
-database/schema.sql
-```
-
-Optionally import:
-
-```text
-database/seed.sql
-```
-
-Create:
-
-```text
-backend/.env
-```
-
-from `.env.example`.
-
-Install and start:
+## Run locally
 
 ```bash
 cd backend
 npm install
-node createAdmin.js
 npm start
 ```
 
-Default development backend:
+Default backend:
 
 ```text
 http://localhost:3100
 ```
 
-Health check:
+Health:
 
 ```text
 http://localhost:3100/health
 ```
 
-Initial administrator created by `createAdmin.js`:
-
-```text
-admin@stockflow.local
-ChangeMe123!
-```
-
-Change the temporary password before any real deployment.
-
 ## Version
 
 ```text
-StockFlow v0.1.0
+StockFlow v0.2.0
 ```

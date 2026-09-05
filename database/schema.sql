@@ -1,4 +1,4 @@
--- StockFlow database schema v0.1
+-- StockFlow complete database schema v0.2
 -- Import into an EMPTY MySQL/MariaDB database named `stockflow`.
 
 SET NAMES utf8mb4;
@@ -9,37 +9,21 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role ENUM(
-        'admin',
-        'warehouse',
-        'purchasing'
-    ) NOT NULL DEFAULT 'warehouse',
-    status ENUM(
-        'active',
-        'inactive'
-    ) NOT NULL DEFAULT 'active',
+    role ENUM('admin','warehouse','purchasing') NOT NULL DEFAULT 'warehouse',
+    status ENUM('active','inactive') NOT NULL DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci;
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS warehouses (
     id VARCHAR(64) PRIMARY KEY,
     code VARCHAR(50) NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
     address VARCHAR(500) NULL,
-    status ENUM(
-        'active',
-        'inactive'
-    ) NOT NULL DEFAULT 'active',
+    status ENUM('active','inactive') NOT NULL DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci;
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS suppliers (
     id VARCHAR(64) PRIMARY KEY,
@@ -48,16 +32,10 @@ CREATE TABLE IF NOT EXISTS suppliers (
     email VARCHAR(255) NULL,
     phone VARCHAR(100) NULL,
     address VARCHAR(500) NULL,
-    status ENUM(
-        'active',
-        'inactive'
-    ) NOT NULL DEFAULT 'active',
+    status ENUM('active','inactive') NOT NULL DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci;
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS products (
     id VARCHAR(64) PRIMARY KEY,
@@ -68,26 +46,20 @@ CREATE TABLE IF NOT EXISTS products (
     unit VARCHAR(50) NOT NULL DEFAULT 'pcs',
     purchase_price DECIMAL(12,2) NOT NULL DEFAULT 0,
     reorder_level DECIMAL(14,3) NOT NULL DEFAULT 0,
-    status ENUM(
-        'active',
-        'inactive'
-    ) NOT NULL DEFAULT 'active',
+    status ENUM('active','inactive') NOT NULL DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci;
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_products_name (name),
+    KEY idx_products_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS warehouse_stock (
     warehouse_id VARCHAR(64) NOT NULL,
     product_id VARCHAR(64) NOT NULL,
     quantity DECIMAL(14,3) NOT NULL DEFAULT 0,
 
-    PRIMARY KEY (
-        warehouse_id,
-        product_id
-    ),
+    PRIMARY KEY (warehouse_id, product_id),
+    KEY idx_warehouse_stock_product (product_id),
 
     CONSTRAINT fk_stock_warehouse
         FOREIGN KEY (warehouse_id)
@@ -98,9 +70,7 @@ CREATE TABLE IF NOT EXISTS warehouse_stock (
         FOREIGN KEY (product_id)
         REFERENCES products(id)
         ON DELETE CASCADE
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS stock_movements (
     id VARCHAR(64) PRIMARY KEY,
@@ -121,15 +91,9 @@ CREATE TABLE IF NOT EXISTS stock_movements (
     created_by VARCHAR(64) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    KEY idx_movements_product_created (
-        product_id,
-        created_at
-    ),
-
-    KEY idx_movements_warehouse_created (
-        warehouse_id,
-        created_at
-    ),
+    KEY idx_movements_product_created (product_id, created_at),
+    KEY idx_movements_warehouse_created (warehouse_id, created_at),
+    KEY idx_movements_reference (reference_type, reference_id),
 
     CONSTRAINT fk_movements_product
         FOREIGN KEY (product_id)
@@ -143,9 +107,7 @@ CREATE TABLE IF NOT EXISTS stock_movements (
         FOREIGN KEY (created_by)
         REFERENCES users(id)
         ON DELETE SET NULL
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS purchase_orders (
     id VARCHAR(64) PRIMARY KEY,
@@ -164,12 +126,9 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
     note TEXT NULL,
     created_by VARCHAR(64) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    UNIQUE KEY uq_purchase_orders_order_no (
-        order_no
-    ),
+    UNIQUE KEY uq_purchase_orders_order_no (order_no),
 
     CONSTRAINT fk_po_supplier
         FOREIGN KEY (supplier_id)
@@ -183,9 +142,7 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
         FOREIGN KEY (created_by)
         REFERENCES users(id)
         ON DELETE SET NULL
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS purchase_order_items (
     id VARCHAR(64) PRIMARY KEY,
@@ -203,8 +160,6 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
     CONSTRAINT fk_po_items_product
         FOREIGN KEY (product_id)
         REFERENCES products(id)
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

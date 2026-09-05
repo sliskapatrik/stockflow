@@ -12,7 +12,7 @@
     <div class="login-card">
         <div class="brand">StockFlow</div>
         <h1>Warehouse Management</h1>
-        <p>Sign in to manage inventory, warehouses and orders.</p>
+        <p>Sign in to manage inventory, warehouses and stock movements.</p>
 
         <form id="loginForm">
             <label for="loginEmail">Email</label>
@@ -22,7 +22,6 @@
             <input id="loginPassword" type="password" placeholder="Password" required>
 
             <div class="error" id="loginError"></div>
-
             <button class="primary-button" type="submit">Sign in</button>
         </form>
     </div>
@@ -36,7 +35,7 @@
             <button class="nav-item active" data-view="dashboard">Dashboard</button>
             <button class="nav-item" data-view="products">Products</button>
             <button class="nav-item" data-view="warehouses">Warehouses</button>
-            <button class="nav-item" data-view="movements">Movements</button>
+            <button class="nav-item" data-view="movements">Stock Movements</button>
             <button class="nav-item" data-view="suppliers">Suppliers</button>
             <button class="nav-item" data-view="orders">Purchase Orders</button>
         </nav>
@@ -79,49 +78,221 @@
             </div>
 
             <div class="panel">
-                <h2>StockFlow v0.1</h2>
-                <p>
-                    Foundation phase: authentication, role system, database structure
-                    and inventory dashboard shell are ready.
-                </p>
+                <div class="panel-header">
+                    <div>
+                        <h2>Low Stock</h2>
+                        <p>Products at or below their reorder level.</p>
+                    </div>
+                </div>
+                <div id="lowStockList" class="data-list"></div>
             </div>
         </section>
 
         <section class="view" id="productsView">
             <div class="panel">
-                <h2>Products</h2>
-                <p>Product management will be implemented in the next phase.</p>
+                <div class="panel-header">
+                    <div>
+                        <h2>Products</h2>
+                        <p>Manage SKUs, barcodes, units and reorder levels.</p>
+                    </div>
+                    <button class="primary-button" id="addProductButton">+ Product</button>
+                </div>
+
+                <div class="toolbar">
+                    <input id="productSearch" type="search" placeholder="Search SKU, barcode or product...">
+                </div>
+
+                <div id="productList" class="data-list"></div>
             </div>
         </section>
 
         <section class="view" id="warehousesView">
             <div class="panel">
-                <h2>Warehouses</h2>
-                <p>Multi-warehouse stock management is prepared in the database.</p>
+                <div class="panel-header">
+                    <div>
+                        <h2>Warehouses</h2>
+                        <p>Manage stock locations and inspect warehouse quantities.</p>
+                    </div>
+                    <button class="primary-button" id="addWarehouseButton">+ Warehouse</button>
+                </div>
+
+                <div id="warehouseList" class="data-list"></div>
             </div>
         </section>
 
         <section class="view" id="movementsView">
             <div class="panel">
-                <h2>Stock Movements</h2>
-                <p>Receipts, issues, transfers and adjustments are planned for v0.2.</p>
+                <div class="panel-header">
+                    <div>
+                        <h2>Stock Movements</h2>
+                        <p>Receipts, issues, adjustments and warehouse transfers.</p>
+                    </div>
+                    <button class="primary-button" id="addMovementButton">+ Movement</button>
+                </div>
+
+                <div class="toolbar movement-toolbar">
+                    <select id="movementWarehouseFilter">
+                        <option value="">All warehouses</option>
+                    </select>
+                    <select id="movementTypeFilter">
+                        <option value="">All movement types</option>
+                        <option value="receipt">Receipt</option>
+                        <option value="issue">Issue</option>
+                        <option value="adjustment_in">Adjustment In</option>
+                        <option value="adjustment_out">Adjustment Out</option>
+                        <option value="transfer_in">Transfer In</option>
+                        <option value="transfer_out">Transfer Out</option>
+                    </select>
+                </div>
+
+                <div id="movementList" class="data-list"></div>
             </div>
         </section>
 
         <section class="view" id="suppliersView">
             <div class="panel">
                 <h2>Suppliers</h2>
-                <p>Supplier management is prepared for the next phase.</p>
+                <p>Supplier management will be implemented in StockFlow v0.3.</p>
             </div>
         </section>
 
         <section class="view" id="ordersView">
             <div class="panel">
                 <h2>Purchase Orders</h2>
-                <p>Purchase order workflow will be added in a later phase.</p>
+                <p>Purchase order workflow will be implemented in StockFlow v0.3.</p>
             </div>
         </section>
     </main>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="modal" id="productModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="productModalTitle">New Product</h2>
+            <button class="icon-button" data-close-modal="productModal">×</button>
+        </div>
+
+        <form id="productForm">
+            <input type="hidden" id="productId">
+
+            <label for="productSku">SKU</label>
+            <input id="productSku" maxlength="100" required>
+
+            <label for="productBarcode">Barcode</label>
+            <input id="productBarcode" maxlength="150">
+
+            <label for="productName">Product name</label>
+            <input id="productName" maxlength="255" required>
+
+            <label for="productDescription">Description</label>
+            <textarea id="productDescription"></textarea>
+
+            <div class="form-grid">
+                <div>
+                    <label for="productUnit">Unit</label>
+                    <input id="productUnit" value="pcs" maxlength="50" required>
+                </div>
+                <div>
+                    <label for="productPurchasePrice">Purchase price</label>
+                    <input id="productPurchasePrice" type="number" step="0.01" min="0" value="0" required>
+                </div>
+                <div>
+                    <label for="productReorderLevel">Reorder level</label>
+                    <input id="productReorderLevel" type="number" step="0.001" min="0" value="0" required>
+                </div>
+                <div>
+                    <label for="productStatus">Status</label>
+                    <select id="productStatus">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="secondary-button" data-close-modal="productModal">Cancel</button>
+                <button type="submit" class="primary-button">Save Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- WAREHOUSE MODAL -->
+<div class="modal" id="warehouseModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="warehouseModalTitle">New Warehouse</h2>
+            <button class="icon-button" data-close-modal="warehouseModal">×</button>
+        </div>
+
+        <form id="warehouseForm">
+            <input type="hidden" id="warehouseId">
+
+            <label for="warehouseCode">Code</label>
+            <input id="warehouseCode" maxlength="50" required>
+
+            <label for="warehouseName">Name</label>
+            <input id="warehouseName" maxlength="255" required>
+
+            <label for="warehouseAddress">Address</label>
+            <textarea id="warehouseAddress"></textarea>
+
+            <label for="warehouseStatus">Status</label>
+            <select id="warehouseStatus">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+
+            <div class="modal-actions">
+                <button type="button" class="secondary-button" data-close-modal="warehouseModal">Cancel</button>
+                <button type="submit" class="primary-button">Save Warehouse</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MOVEMENT MODAL -->
+<div class="modal" id="movementModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>New Stock Movement</h2>
+            <button class="icon-button" data-close-modal="movementModal">×</button>
+        </div>
+
+        <form id="movementForm">
+            <label for="movementType">Movement type</label>
+            <select id="movementType" required>
+                <option value="receipt">Receipt</option>
+                <option value="issue">Issue</option>
+                <option value="adjustment_in">Adjustment In</option>
+                <option value="adjustment_out">Adjustment Out</option>
+                <option value="transfer">Warehouse Transfer</option>
+            </select>
+
+            <label for="movementProduct">Product</label>
+            <select id="movementProduct" required></select>
+
+            <label for="movementWarehouse">Warehouse</label>
+            <select id="movementWarehouse" required></select>
+
+            <div id="destinationWarehouseWrap" class="hidden">
+                <label for="destinationWarehouse">Destination warehouse</label>
+                <select id="destinationWarehouse"></select>
+            </div>
+
+            <label for="movementQuantity">Quantity</label>
+            <input id="movementQuantity" type="number" min="0.001" step="0.001" required>
+
+            <label for="movementNote">Note</label>
+            <textarea id="movementNote"></textarea>
+
+            <div class="modal-actions">
+                <button type="button" class="secondary-button" data-close-modal="movementModal">Cancel</button>
+                <button type="submit" class="primary-button">Post Movement</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script src="js/app.js"></script>
