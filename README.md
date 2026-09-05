@@ -30,11 +30,11 @@ purchasing
 
 ### Admin
 - full access
-- users
-- roles
-- settings
-- reports
+- user and role management
+- application settings
+- reporting
 - system overview
+- suppliers and purchasing
 - all inventory operations
 
 ### Warehouse
@@ -44,12 +44,14 @@ purchasing
 - inventory counts
 - barcode / QR productivity workflow
 - purchase order receiving
+- fast stock lookup
 
 ### Purchasing
 - suppliers
 - purchase orders
+- purchase order items
 - partial receiving
-- purchasing-related workflow
+- purchasing workflow
 
 ---
 
@@ -66,12 +68,9 @@ Products support:
 - reorder level
 - active / inactive status
 - total stock across warehouses
+- low-stock indication
 
-Search supports:
-
-- SKU
-- barcode
-- product name
+Search supports SKU, barcode and product name.
 
 ---
 
@@ -79,12 +78,12 @@ Search supports:
 
 Warehouses support:
 
-- code
+- warehouse code
 - name
 - address
 - active / inactive status
 - product count
-- total quantity
+- total stored quantity
 
 Stock is stored independently per warehouse.
 
@@ -105,21 +104,9 @@ transfer_out
 
 Every stock-changing operation creates movement history.
 
-Stock cannot become negative.
+Warehouse transfers are transactional. If any step fails, the whole operation is rolled back.
 
-Warehouse transfers are transactional:
-
-```text
-Source warehouse
-        ↓
-Transfer Out
-        ↓
-Destination warehouse
-        ↓
-Transfer In
-```
-
-If any step fails, the whole transfer is rolled back.
+StockFlow prevents stock from becoming negative.
 
 ---
 
@@ -144,10 +131,10 @@ Purchase Orders support:
 - supplier
 - destination warehouse
 - order date
-- expected date
+- expected delivery date
 - notes
 - multiple products
-- quantity
+- ordered quantity
 - unit price
 - total value
 
@@ -172,7 +159,7 @@ Cancelled
 
 # Partial Receiving
 
-Purchase orders can be received over multiple deliveries.
+Purchase orders can be received in multiple deliveries.
 
 Example:
 
@@ -193,15 +180,15 @@ Status: Received
 
 Receiving automatically:
 
-1. validates remaining PO quantity
+1. validates the remaining PO quantity
 2. prevents over-receipt
 3. increases warehouse stock
 4. updates `quantity_received`
 5. creates stock movement history
-6. links movement to the PO
-7. updates PO status
+6. links the movement to the Purchase Order
+7. updates the PO status
 
-The receiving workflow runs inside a MySQL transaction.
+The workflow runs inside a MySQL transaction.
 
 ---
 
@@ -246,13 +233,15 @@ Counted: 8
 Difference: -17
 ```
 
-StockFlow creates:
+StockFlow automatically creates:
 
 ```text
 Adjustment Out: 17
 ```
 
-The operation is transactional and recorded in the stock audit.
+If physical stock is higher than system stock, an `Adjustment In` is created.
+
+The operation is transactional and recorded in Stock Audit.
 
 ---
 
@@ -267,7 +256,7 @@ Target stock = reorder level × 2
 Suggested quantity = target stock - current stock
 ```
 
-The UI also shows estimated purchase value.
+The interface also shows the estimated purchase value.
 
 ---
 
@@ -305,7 +294,7 @@ The Scanner & Productivity module accepts:
 - warehouse location code
 - QR identifier
 
-A USB/Bluetooth barcode scanner that behaves as a keyboard can enter values directly into the lookup field.
+A USB/Bluetooth barcode scanner that behaves like a keyboard can type directly into the lookup field.
 
 ---
 
@@ -342,10 +331,10 @@ Post
 
 Quick operations still use:
 
-- transactions
+- MySQL transactions
 - negative-stock protection
-- movement history
-- logged-in user
+- stock movement history
+- logged-in user tracking
 - `quick_scan` reference
 
 ---
@@ -366,7 +355,7 @@ Location data includes:
 - location code
 - QR identifier
 - name
-- status
+- active / inactive status
 
 The QR value acts as a scan-friendly identifier.
 
@@ -374,7 +363,7 @@ The QR value acts as a scan-friendly identifier.
 
 # Saved Views
 
-Users can save commonly used views.
+Users can save frequently used filters.
 
 ## Product saved view
 - product search query
@@ -409,10 +398,8 @@ Admin reporting includes:
 - valuation by warehouse
 
 ## Movement Report
-Filters:
-
-- warehouse
-- movement type
+- warehouse filter
+- movement type filter
 - date from
 - date to
 
@@ -433,7 +420,7 @@ Filters:
 
 # CSV Export
 
-Admin can export stock movements to:
+Admin users can export stock movements to:
 
 ```text
 stockflow-movements.csv
@@ -443,7 +430,7 @@ stockflow-movements.csv
 
 # User Management
 
-Admin can:
+Admin users can:
 
 - create user
 - edit user
@@ -459,7 +446,7 @@ warehouse
 purchasing
 ```
 
-The active Admin cannot deactivate their own account.
+The currently logged-in Admin cannot deactivate their own account.
 
 ---
 
@@ -499,12 +486,12 @@ Audit data includes:
 
 # System Overview
 
-Admin can inspect:
+Admin users can inspect:
 
 - total users
 - active users
-- products
-- warehouses
+- active products
+- active warehouses
 - database name
 - database version
 - database time
@@ -522,13 +509,13 @@ StockFlow includes:
 - role-based authorization
 - login rate limiting
 - email uniqueness
-- minimum password length
-- backend validation
+- minimum password length validation
+- backend input validation
 - negative-stock protection
 - MySQL transactions
 - protected CSV export
-- disabled Express `X-Powered-By`
-- Helmet HTTP security headers
+- Helmet security headers
+- `.env` excluded from Git
 
 ---
 
@@ -539,12 +526,12 @@ The final v1.0 interface supports smaller browser windows.
 Important behavior:
 
 - the main page can scroll vertically
-- the browser can scroll horizontally if a very small viewport cannot contain dense warehouse tables
-- sidebar has independent vertical scrolling when needed
+- the browser can scroll horizontally if a very small viewport cannot contain dense tables
+- the sidebar has its own vertical scrolling when needed
 - modal dialogs scroll internally
 - the page behind an open modal remains locked
 
-This prevents controls or table columns from becoming inaccessible when the browser is resized.
+This prevents controls, tables and reports from becoming inaccessible when the browser is resized.
 
 ---
 
@@ -595,10 +582,7 @@ stockflow/
 ├── database/
 │   ├── schema.sql
 │   ├── seed.sql
-│   ├── README.md
-│   ├── upgrade-v0.3-to-v0.4.sql
-│   ├── upgrade-v0.4-to-v0.5.sql
-│   └── upgrade-v0.5-to-v0.6.sql
+│   └── README.md
 │
 └── backend/
     ├── server.js
@@ -626,9 +610,29 @@ stockflow/
 
 ---
 
+# Database
+
+The complete current database structure is stored in:
+
+```text
+database/schema.sql
+```
+
+Optional demo/reference data is stored in:
+
+```text
+database/seed.sql
+```
+
+The final repository uses a clean full-schema approach for fresh installations.
+
+There are no JavaScript migration files in the final release.
+
+---
+
 # Database Tables
 
-The current schema contains tables such as:
+The current schema includes:
 
 ```text
 users
@@ -651,7 +655,14 @@ admin_audit
 
 # Fresh Installation
 
-## 1. Create database
+## 1. Clone repository
+
+```bash
+git clone https://github.com/sliskapatrik/stockflow.git
+cd stockflow
+```
+
+## 2. Create database
 
 ```sql
 CREATE DATABASE stockflow
@@ -659,9 +670,7 @@ CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 ```
 
-## 2. Create dedicated DB user
-
-Example:
+## 3. Create dedicated DB user
 
 ```sql
 CREATE USER 'stockflow'@'localhost'
@@ -674,7 +683,7 @@ TO 'stockflow'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-## 3. Import schema
+## 4. Import schema
 
 Import:
 
@@ -688,7 +697,7 @@ Optionally import:
 database/seed.sql
 ```
 
-## 4. Configure environment
+## 5. Configure backend
 
 Create:
 
@@ -718,22 +727,22 @@ PORT=3100
 NODE_ENV=development
 ```
 
-Never commit the real `.env`.
+Never commit the real `.env` file.
 
-## 5. Install dependencies
+## 6. Install dependencies
 
 ```bash
 cd backend
 npm install
 ```
 
-## 6. Create initial Admin
+## 7. Create initial Admin
 
 ```bash
 node createAdmin.js
 ```
 
-Initial development credentials:
+Default development Admin:
 
 ```text
 Email:
@@ -743,9 +752,9 @@ Password:
 ChangeMe123!
 ```
 
-Change the temporary password before production use.
+Change the temporary password before real deployment.
 
-## 7. Start StockFlow
+## 8. Start StockFlow
 
 ```bash
 npm start
@@ -765,16 +774,6 @@ http://localhost:3100/health
 
 ---
 
-# Existing v0.6 Database
-
-If StockFlow v0.6 already works with your existing local database:
-
-```text
-No additional SQL change is required for v1.0.
-```
-
----
-
 # Portfolio Highlights
 
 StockFlow demonstrates:
@@ -782,21 +781,22 @@ StockFlow demonstrates:
 - full-stack JavaScript development
 - REST API architecture
 - relational database modeling
-- transactions
+- transaction-safe inventory logic
 - stock consistency
 - multi-warehouse inventory
-- purchase-order workflow
+- Purchase Order workflow
 - partial receiving
 - physical inventory
 - stock reconciliation
 - audit history
 - barcode-oriented workflows
+- QR/location identification
 - role-based access control
 - reporting
 - CSV export
 - admin tooling
 - responsive UI
-- production-oriented validation
+- security validation
 
 ---
 
@@ -833,7 +833,7 @@ screenshots/
 - [ ] Partial receiving
 - [ ] Inventory Count
 - [ ] Inventory discrepancy correction
-- [ ] Reorder suggestions
+- [ ] Reorder Suggestions
 - [ ] Stock Audit
 - [ ] Barcode lookup
 - [ ] QR location lookup
