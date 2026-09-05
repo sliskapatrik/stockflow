@@ -2,131 +2,162 @@
 
 StockFlow is a full-stack inventory, warehouse and purchasing management system built with Node.js, Express, MySQL/MariaDB and vanilla JavaScript.
 
-# v0.3 – Suppliers & Purchase Orders
+# v0.4 – Inventory Operations
 
-This phase adds a complete purchasing workflow.
+This phase adds physical inventory control, discrepancy processing, reorder suggestions and a stock audit view.
 
-## Suppliers
+## Inventory Counts
 
-- create supplier
-- edit supplier
-- company name
-- contact name
-- email
-- phone
-- address
-- active / inactive status
+Users with Admin or Warehouse permissions can create an inventory count for a warehouse.
 
-## Purchase Orders
+When a count is created, StockFlow snapshots the current system quantity for every active product.
 
-- create purchase order
-- automatic PO number
-- supplier
-- destination warehouse
-- order date
-- expected delivery date
-- notes
-- multiple products
-- ordered quantity
-- purchase price
-- total order value
-- order detail
-
-Human-readable order numbers are displayed as:
+The workflow is:
 
 ```text
-PO-000001
-PO-000002
+Create inventory count
+        ↓
+Physical count
+        ↓
+Enter counted quantities
+        ↓
+Review discrepancies
+        ↓
+Complete inventory
+        ↓
+Stock is corrected
+        ↓
+Adjustment movements are written to the audit trail
 ```
 
-## Purchase Order Statuses
+Inventory count numbers use:
+
+```text
+IC-000001
+IC-000002
+```
+
+Supported count statuses:
 
 ```text
 Draft
-Ordered
-Partially Received
-Received
-Cancelled
+In Progress
+Completed
 ```
 
-## Partial Receiving
+## Discrepancies
 
-Stock can be received in multiple deliveries.
+For every product StockFlow shows:
+
+- system quantity
+- physically counted quantity
+- difference
 
 Example:
 
 ```text
-Ordered: 100
-First receipt: 40
-Remaining: 60
-Status: Partially Received
+System: 10
+Counted: 8
+Difference: -2
 ```
 
-Later:
+Completing the count changes warehouse stock to `8` and creates:
 
 ```text
-Second receipt: 60
-Remaining: 0
-Status: Received
+Adjustment Out: 2
 ```
 
-Each receipt automatically:
+If physical stock is higher:
 
-1. validates the remaining PO quantity
-2. prevents over-receipt
-3. increases stock in the PO destination warehouse
-4. increments `quantity_received`
-5. creates a normal `receipt` stock movement
-6. links the stock movement to the purchase order
-7. updates the PO status
+```text
+System: 10
+Counted: 12
+Difference: +2
+```
 
-All operations are completed inside a MySQL transaction.
+StockFlow creates:
 
-## Receipt History
+```text
+Adjustment In: 2
+```
 
-Purchase order detail displays receipt history including:
+The entire completion is transactional.
+
+## Reorder Suggestions
+
+Products at or below their reorder level appear in the Reorder Suggestions view.
+
+The current suggestion formula is:
+
+```text
+target stock = reorder level × 2
+suggested quantity = target stock - current stock
+```
+
+The interface also shows the estimated purchase value.
+
+## Stock Audit
+
+The Stock Audit view provides a chronological record of stock-changing activity:
+
+- receipts
+- issues
+- adjustments
+- warehouse transfers
+- purchase-order receipts
+- inventory-count adjustments
+
+Each entry includes:
 
 - product
-- quantity
 - warehouse
-- date/time
+- movement type
+- quantity
+- timestamp
+- reference
 - user
-- receipt note
 
-The receipt is also visible in normal Stock Movements.
-
-## Existing v0.2 Functionality Preserved
+## Existing Features Preserved
 
 - Products
 - SKU / barcode
 - Warehouses
-- Real stock quantities
-- Receipt
-- Issue
-- Adjustments
-- Warehouse transfer
-- Low-stock dashboard
+- real stock quantities
+- receipts and issues
+- adjustments
+- warehouse transfers
+- low-stock dashboard
+- Suppliers
+- Purchase Orders
+- partial receiving
+- PO receipt history
 - negative-stock protection
 - JWT authentication
 - roles
 
-## Roles
+## Database Upgrade
 
-- Admin
-- Warehouse
-- Purchasing
+For an existing v0.3 database, run once:
 
-Purchasing and Admin can create suppliers and purchase orders.
-Warehouse, Purchasing and Admin can receive purchase order stock.
+```text
+database/upgrade-v0.3-to-v0.4.sql
+```
 
-## Database
+This creates:
 
-No mandatory DB upgrade is required from v0.2 because the required purchasing tables already existed in the foundation schema.
+```text
+inventory_counts
+inventory_count_items
+```
 
-`database/schema.sql` remains the source of truth for fresh installations.
+For a clean installation use:
+
+```text
+database/schema.sql
+```
 
 ## Version
 
 ```text
-StockFlow v0.3.0
+StockFlow v0.4.0
 ```

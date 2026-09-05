@@ -12,18 +12,19 @@
 6. Run `node createAdmin.js`.
 7. Start with `npm start`.
 
-## Upgrade from v0.2 to v0.3
+## Upgrade from v0.3 to v0.4
 
-No mandatory new tables or columns are required.
+v0.4 introduces two new tables:
 
-The v0.2 schema already contained:
+- `inventory_counts`
+- `inventory_count_items`
 
-- `suppliers`
-- `purchase_orders`
-- `purchase_order_items`
-- stock movement references
+For an existing v0.3 database, run:
 
-v0.3 activates those structures in the application.
+```text
+database/upgrade-v0.3-to-v0.4.sql
+```
 
-The v0.3 fresh-install schema adds optional indexes for purchase order reporting/performance.
-Your existing v0.2 database can be used without alteration.
+once in HeidiSQL before starting StockFlow v0.4.
+
+No JavaScript migration scripts are used.

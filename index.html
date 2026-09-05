@@ -36,6 +36,7 @@
             <button class="nav-item" data-view="products">Products</button>
             <button class="nav-item" data-view="warehouses">Warehouses</button>
             <button class="nav-item" data-view="movements">Stock Movements</button>
+            <button class="nav-item" data-view="inventory">Inventory Operations</button>
             <button class="nav-item" data-view="suppliers">Suppliers</button>
             <button class="nav-item" data-view="orders">Purchase Orders</button>
         </nav>
@@ -146,6 +147,46 @@
                 </div>
 
                 <div id="movementList" class="data-list"></div>
+            </div>
+        </section>
+
+
+        <section class="view" id="inventoryView">
+            <div class="inventory-tabs">
+                <button class="inventory-tab active" data-inventory-tab="counts">Inventory Counts</button>
+                <button class="inventory-tab" data-inventory-tab="reorder">Reorder Suggestions</button>
+                <button class="inventory-tab" data-inventory-tab="audit">Stock Audit</button>
+            </div>
+
+            <div class="panel inventory-panel active" id="inventoryCountsPanel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Inventory Counts</h2>
+                        <p>Compare physical stock with the system and post discrepancies.</p>
+                    </div>
+                    <button class="primary-button" id="newInventoryCountButton">+ Inventory Count</button>
+                </div>
+                <div id="inventoryCountList" class="data-list"></div>
+            </div>
+
+            <div class="panel inventory-panel" id="inventoryReorderPanel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Reorder Suggestions</h2>
+                        <p>Products at or below reorder level with suggested purchase quantity.</p>
+                    </div>
+                </div>
+                <div id="reorderSuggestionList" class="data-list"></div>
+            </div>
+
+            <div class="panel inventory-panel" id="inventoryAuditPanel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Stock Audit</h2>
+                        <p>Chronological audit of stock-changing transactions.</p>
+                    </div>
+                </div>
+                <div id="stockAuditList" class="data-list"></div>
             </div>
         </section>
 
@@ -406,6 +447,44 @@
         </div>
 
         <div id="orderDetailContent"></div>
+    </div>
+</div>
+
+
+<!-- NEW INVENTORY COUNT MODAL -->
+<div class="modal" id="inventoryCountModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>New Inventory Count</h2>
+            <button class="icon-button" data-close-modal="inventoryCountModal">×</button>
+        </div>
+
+        <form id="inventoryCountForm">
+            <label for="inventoryWarehouse">Warehouse</label>
+            <select id="inventoryWarehouse" required></select>
+
+            <label for="inventoryCountNote">Note</label>
+            <textarea id="inventoryCountNote" placeholder="Annual count, cycle count, zone..."></textarea>
+
+            <div class="modal-actions">
+                <button type="button" class="secondary-button" data-close-modal="inventoryCountModal">Cancel</button>
+                <button type="submit" class="primary-button">Create Inventory Count</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- INVENTORY COUNT DETAIL MODAL -->
+<div class="modal" id="inventoryCountDetailModal">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <div>
+                <h2 id="inventoryCountDetailTitle">Inventory Count</h2>
+                <p id="inventoryCountDetailSubtitle"></p>
+            </div>
+            <button class="icon-button" data-close-modal="inventoryCountDetailModal">×</button>
+        </div>
+        <div id="inventoryCountDetailContent"></div>
     </div>
 </div>
 

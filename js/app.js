@@ -18,6 +18,8 @@ let movements = [];
 let suppliers = [];
 let orders = [];
 let currentOrderDetail = null;
+let inventoryCounts = [];
+let currentInventoryCount = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -137,7 +139,8 @@ const viewTitles = {
     warehouses: ["Warehouses", "Storage locations"],
     movements: ["Stock Movements", "Receipts, issues, adjustments and transfers"],
     suppliers: ["Suppliers", "Supplier directory"],
-    orders: ["Purchase Orders", "Purchasing workflow"]
+    orders: ["Purchase Orders", "Purchasing workflow"],
+    inventory: ["Inventory Operations", "Physical counts, reorder suggestions and stock audit"]
 };
 
 document.querySelectorAll(".nav-item").forEach((button) => {
@@ -164,6 +167,7 @@ document.querySelectorAll(".nav-item").forEach((button) => {
         if (name === "movements") await loadMovements();
         if (name === "suppliers") await loadSuppliers();
         if (name === "orders") await loadOrders();
+        if (name === "inventory") await loadInventoryOperations();
     });
 });
 
@@ -1124,4 +1128,346 @@ function formatOrderStatus(status) {
 function formatDateOnly(value) {
     if (!value) return "";
     return String(value).slice(0, 10);
+}
+
+
+/* INVENTORY OPERATIONS */
+
+async function loadInventoryOperations() {
+    await Promise.all([
+        loadInventoryCounts(),
+        loadReorderSuggestions(),
+        loadStockAudit()
+    ]);
+    fillInventoryWarehouseSelector();
+}
+
+document.querySelectorAll(".inventory-tab").forEach((button) => {
+    button.addEventListener("click", () => {
+        document.querySelectorAll(".inventory-tab").forEach((item) =>
+            item.classList.remove("active")
+        );
+        document.querySelectorAll(".inventory-panel").forEach((panel) =>
+            panel.classList.remove("active")
+        );
+
+        button.classList.add("active");
+
+        const tab = button.dataset.inventoryTab;
+        if (tab === "counts") $("inventoryCountsPanel").classList.add("active");
+        if (tab === "reorder") $("inventoryReorderPanel").classList.add("active");
+        if (tab === "audit") $("inventoryAuditPanel").classList.add("active");
+    });
+});
+
+async function loadInventoryCounts() {
+    try {
+        const response = await authFetch(`${API_URL}/inventory/counts`);
+        inventoryCounts = await readApi(response);
+        renderInventoryCounts();
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function renderInventoryCounts() {
+    const container = $("inventoryCountList");
+    if (!container) return;
+
+    if (!inventoryCounts.length) {
+        container.innerHTML = `<div class="empty-state">No inventory counts yet.</div>`;
+        return;
+    }
+
+    container.innerHTML = inventoryCounts.map((count) => `
+        <div class="data-card">
+            <div>
+                <h3>${escapeHtml(count.displayNo)}</h3>
+                <p>${escapeHtml(count.warehouseCode)} - ${escapeHtml(count.warehouseName)}</p>
+                <div class="card-meta">
+                    <span>Status: ${escapeHtml(formatInventoryStatus(count.status))}</span>
+                    <span>Items: ${count.itemCount}</span>
+                    <span>Discrepancies: ${count.discrepancyCount}</span>
+                    <span>${formatDateTime(count.createdAt)}</span>
+                </div>
+            </div>
+            <div class="card-actions">
+                <span class="badge">${escapeHtml(formatInventoryStatus(count.status))}</span>
+                <button class="secondary-button" data-open-count="${count.id}">Open</button>
+            </div>
+        </div>
+    `).join("");
+
+    container.querySelectorAll("[data-open-count]").forEach((button) => {
+        button.addEventListener("click", () => openInventoryCount(button.dataset.openCount));
+    });
+}
+
+$("newInventoryCountButton")?.addEventListener("click", () => {
+    $("inventoryCountForm").reset();
+    fillInventoryWarehouseSelector();
+    openModal("inventoryCountModal");
+});
+
+function fillInventoryWarehouseSelector() {
+    if (!$("inventoryWarehouse")) return;
+
+    $("inventoryWarehouse").innerHTML = warehouses
+        .filter((item) => item.status === "active")
+        .map((warehouse) =>
+            `<option value="${warehouse.id}">${escapeHtml(warehouse.code)} - ${escapeHtml(warehouse.name)}</option>`
+        )
+        .join("");
+}
+
+$("inventoryCountForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    try {
+        const response = await authFetch(`${API_URL}/inventory/counts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                warehouseId: $("inventoryWarehouse").value,
+                note: $("inventoryCountNote").value.trim()
+            })
+        });
+
+        const data = await readApi(response);
+        closeModal("inventoryCountModal");
+        await loadInventoryCounts();
+        await openInventoryCount(data.id);
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+async function openInventoryCount(id) {
+    try {
+        const response = await authFetch(`${API_URL}/inventory/counts/${id}`);
+        currentInventoryCount = await readApi(response);
+
+        $("inventoryCountDetailTitle").textContent = currentInventoryCount.displayNo;
+        $("inventoryCountDetailSubtitle").textContent =
+            `${currentInventoryCount.warehouseCode} - ${currentInventoryCount.warehouseName}`;
+
+        renderInventoryCountDetail();
+        openModal("inventoryCountDetailModal");
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+function renderInventoryCountDetail() {
+    const count = currentInventoryCount;
+    if (!count) return;
+
+    const editable = count.status !== "completed";
+
+    $("inventoryCountDetailContent").innerHTML = `
+        <div class="order-summary-grid">
+            <div class="summary-box">
+                <span>Status</span>
+                <strong>${escapeHtml(formatInventoryStatus(count.status))}</strong>
+            </div>
+            <div class="summary-box">
+                <span>Created</span>
+                <strong>${formatDateTime(count.createdAt)}</strong>
+            </div>
+            <div class="summary-box">
+                <span>Completed</span>
+                <strong>${count.completedAt ? formatDateTime(count.completedAt) : "—"}</strong>
+            </div>
+            <div class="summary-box">
+                <span>Warehouse</span>
+                <strong>${escapeHtml(count.warehouseCode)}</strong>
+            </div>
+        </div>
+
+        <div class="count-grid header">
+            <div>Product</div>
+            <div>System</div>
+            <div>Counted</div>
+            <div>Difference</div>
+        </div>
+
+        <div id="inventoryCountRows">
+            ${count.items.map((item) => {
+                const diff = item.countedQuantity === null ? 0 : Number(item.countedQuantity) - Number(item.systemQuantity);
+                const diffClass = diff > 0 ? "difference-positive" : diff < 0 ? "difference-negative" : "difference-zero";
+
+                return `
+                    <div class="count-grid">
+                        <div>
+                            <strong>${escapeHtml(item.sku)} - ${escapeHtml(item.productName)}</strong>
+                            <div class="card-meta"><span>${escapeHtml(item.unit)}</span></div>
+                        </div>
+                        <div>${formatQuantity(item.systemQuantity)}</div>
+                        <div>
+                            ${editable
+                                ? `<input class="counted-quantity"
+                                          data-item-id="${item.id}"
+                                          type="number"
+                                          min="0"
+                                          step="0.001"
+                                          value="${item.countedQuantity === null ? "" : Number(item.countedQuantity)}"
+                                          placeholder="Count">`
+                                : formatQuantity(item.countedQuantity)}
+                        </div>
+                        <div class="${diffClass}">
+                            ${item.countedQuantity === null ? "—" : (diff > 0 ? "+" : "") + formatQuantity(diff)}
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+
+        ${editable ? `
+            <div class="modal-actions">
+                <button class="secondary-button" id="saveInventoryCountButton">Save Count</button>
+                <button class="primary-button" id="completeInventoryCountButton">Complete & Apply Adjustments</button>
+            </div>
+        ` : ""}
+    `;
+
+    $("saveInventoryCountButton")?.addEventListener("click", saveInventoryCount);
+    $("completeInventoryCountButton")?.addEventListener("click", completeInventoryCount);
+}
+
+async function saveInventoryCount() {
+    const inputs = [...$("inventoryCountRows").querySelectorAll(".counted-quantity")];
+
+    if (inputs.some((input) => input.value === "")) {
+        alert("Enter a counted quantity for every product.");
+        return false;
+    }
+
+    const items = inputs.map((input) => ({
+        id: input.dataset.itemId,
+        countedQuantity: Number(input.value)
+    }));
+
+    try {
+        const response = await authFetch(
+            `${API_URL}/inventory/counts/${currentInventoryCount.id}/items`,
+            {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ items })
+            }
+        );
+
+        await readApi(response);
+        await openInventoryCount(currentInventoryCount.id);
+        return true;
+    } catch (error) {
+        alert(error.message);
+        return false;
+    }
+}
+
+async function completeInventoryCount() {
+    const saved = await saveInventoryCount();
+    if (!saved) return;
+
+    if (!confirm("Complete this inventory count and apply all stock discrepancies?")) {
+        return;
+    }
+
+    try {
+        const response = await authFetch(
+            `${API_URL}/inventory/counts/${currentInventoryCount.id}/complete`,
+            { method: "POST" }
+        );
+
+        await readApi(response);
+
+        await Promise.all([
+            loadInventoryCounts(),
+            loadProducts(),
+            loadWarehouses(),
+            loadDashboard(),
+            loadMovements(),
+            loadStockAudit(),
+            loadReorderSuggestions()
+        ]);
+
+        await openInventoryCount(currentInventoryCount.id);
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+async function loadReorderSuggestions() {
+    try {
+        const response = await authFetch(`${API_URL}/inventory/reorder-suggestions`);
+        const rows = await readApi(response);
+        const container = $("reorderSuggestionList");
+        if (!container) return;
+
+        if (!rows.length) {
+            container.innerHTML = `<div class="empty-state">No reorder suggestions.</div>`;
+            return;
+        }
+
+        container.innerHTML = rows.map((item) => `
+            <div class="data-card">
+                <div>
+                    <h3>${escapeHtml(item.name)}</h3>
+                    <p>${escapeHtml(item.sku)}</p>
+                    <div class="card-meta">
+                        <span>Current: ${formatQuantity(item.totalStock)} ${escapeHtml(item.unit)}</span>
+                        <span>Reorder level: ${formatQuantity(item.reorderLevel)} ${escapeHtml(item.unit)}</span>
+                        <span>Suggested: ${formatQuantity(item.suggestedQuantity)} ${escapeHtml(item.unit)}</span>
+                        <span>Estimated value: CHF ${(Number(item.suggestedQuantity) * Number(item.purchasePrice)).toFixed(2)}</span>
+                    </div>
+                </div>
+                <div class="card-actions">
+                    <span class="badge low">Reorder</span>
+                </div>
+            </div>
+        `).join("");
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+async function loadStockAudit() {
+    try {
+        const response = await authFetch(`${API_URL}/inventory/audit?limit=200`);
+        const rows = await readApi(response);
+        const container = $("stockAuditList");
+        if (!container) return;
+
+        if (!rows.length) {
+            container.innerHTML = `<div class="empty-state">No stock audit entries.</div>`;
+            return;
+        }
+
+        container.innerHTML = rows.map((row) => `
+            <div class="data-card">
+                <div>
+                    <h3>${escapeHtml(row.productName)}</h3>
+                    <p>${escapeHtml(row.sku)} · ${escapeHtml(row.warehouseCode)} - ${escapeHtml(row.warehouseName)}</p>
+                    <div class="card-meta">
+                        <span>${escapeHtml(formatMovementType(row.movementType))}</span>
+                        <span>Qty: ${formatQuantity(row.quantity)} ${escapeHtml(row.unit)}</span>
+                        <span>${formatDateTime(row.createdAt)}</span>
+                        ${row.referenceType ? `<span>Ref: ${escapeHtml(row.referenceType)}</span>` : ""}
+                        ${row.createdBy ? `<span>By: ${escapeHtml(row.createdBy)}</span>` : ""}
+                    </div>
+                </div>
+            </div>
+        `).join("");
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function formatInventoryStatus(status) {
+    return {
+        draft: "Draft",
+        in_progress: "In Progress",
+        completed: "Completed"
+    }[status] || status;
 }
