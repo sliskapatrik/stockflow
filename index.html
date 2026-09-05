@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockFlow</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="login-screen" id="loginScreen">
+    <div class="login-card">
+        <div class="brand">StockFlow</div>
+        <h1>Warehouse Management</h1>
+        <p>Sign in to manage inventory, warehouses and orders.</p>
+
+        <form id="loginForm">
+            <label for="loginEmail">Email</label>
+            <input id="loginEmail" type="email" placeholder="admin@stockflow.local" required>
+
+            <label for="loginPassword">Password</label>
+            <input id="loginPassword" type="password" placeholder="Password" required>
+
+            <div class="error" id="loginError"></div>
+
+            <button class="primary-button" type="submit">Sign in</button>
+        </form>
+    </div>
+</div>
+
+<div class="app" id="app">
+    <aside class="sidebar">
+        <div class="sidebar-brand">StockFlow</div>
+
+        <nav>
+            <button class="nav-item active" data-view="dashboard">Dashboard</button>
+            <button class="nav-item" data-view="products">Products</button>
+            <button class="nav-item" data-view="warehouses">Warehouses</button>
+            <button class="nav-item" data-view="movements">Movements</button>
+            <button class="nav-item" data-view="suppliers">Suppliers</button>
+            <button class="nav-item" data-view="orders">Purchase Orders</button>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <header class="topbar">
+            <div>
+                <h1 id="pageTitle">Dashboard</h1>
+                <p id="pageSubtitle">Inventory overview</p>
+            </div>
+
+            <div class="user-box">
+                <div>
+                    <strong id="currentUserName">User</strong>
+                    <span id="currentUserRole">role</span>
+                </div>
+                <button class="secondary-button" id="logoutButton">Log out</button>
+            </div>
+        </header>
+
+        <section class="view active-view" id="dashboardView">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span>Total Products</span>
+                    <strong id="statProducts">0</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Total Stock</span>
+                    <strong id="statStock">0</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Low Stock</span>
+                    <strong id="statLowStock">0</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Warehouses</span>
+                    <strong id="statWarehouses">0</strong>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>StockFlow v0.1</h2>
+                <p>
+                    Foundation phase: authentication, role system, database structure
+                    and inventory dashboard shell are ready.
+                </p>
+            </div>
+        </section>
+
+        <section class="view" id="productsView">
+            <div class="panel">
+                <h2>Products</h2>
+                <p>Product management will be implemented in the next phase.</p>
+            </div>
+        </section>
+
+        <section class="view" id="warehousesView">
+            <div class="panel">
+                <h2>Warehouses</h2>
+                <p>Multi-warehouse stock management is prepared in the database.</p>
+            </div>
+        </section>
+
+        <section class="view" id="movementsView">
+            <div class="panel">
+                <h2>Stock Movements</h2>
+                <p>Receipts, issues, transfers and adjustments are planned for v0.2.</p>
+            </div>
+        </section>
+
+        <section class="view" id="suppliersView">
+            <div class="panel">
+                <h2>Suppliers</h2>
+                <p>Supplier management is prepared for the next phase.</p>
+            </div>
+        </section>
+
+        <section class="view" id="ordersView">
+            <div class="panel">
+                <h2>Purchase Orders</h2>
+                <p>Purchase order workflow will be added in a later phase.</p>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
