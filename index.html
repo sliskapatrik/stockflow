@@ -151,15 +151,27 @@
 
         <section class="view" id="suppliersView">
             <div class="panel">
-                <h2>Suppliers</h2>
-                <p>Supplier management will be implemented in StockFlow v0.3.</p>
+                <div class="panel-header">
+                    <div>
+                        <h2>Suppliers</h2>
+                        <p>Manage companies and supplier contacts.</p>
+                    </div>
+                    <button class="primary-button" id="addSupplierButton">+ Supplier</button>
+                </div>
+                <div id="supplierList" class="data-list"></div>
             </div>
         </section>
 
         <section class="view" id="ordersView">
             <div class="panel">
-                <h2>Purchase Orders</h2>
-                <p>Purchase order workflow will be implemented in StockFlow v0.3.</p>
+                <div class="panel-header">
+                    <div>
+                        <h2>Purchase Orders</h2>
+                        <p>Create orders and receive stock partially or completely.</p>
+                    </div>
+                    <button class="primary-button" id="addOrderButton">+ Purchase Order</button>
+                </div>
+                <div id="orderList" class="data-list"></div>
             </div>
         </section>
     </main>
@@ -292,6 +304,108 @@
                 <button type="submit" class="primary-button">Post Movement</button>
             </div>
         </form>
+    </div>
+</div>
+
+
+<!-- SUPPLIER MODAL -->
+<div class="modal" id="supplierModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="supplierModalTitle">New Supplier</h2>
+            <button class="icon-button" data-close-modal="supplierModal">×</button>
+        </div>
+
+        <form id="supplierForm">
+            <input type="hidden" id="supplierId">
+
+            <label for="supplierCompanyName">Company name</label>
+            <input id="supplierCompanyName" required>
+
+            <label for="supplierContactName">Contact name</label>
+            <input id="supplierContactName">
+
+            <label for="supplierEmail">Email</label>
+            <input id="supplierEmail" type="email">
+
+            <label for="supplierPhone">Phone</label>
+            <input id="supplierPhone">
+
+            <label for="supplierAddress">Address</label>
+            <textarea id="supplierAddress"></textarea>
+
+            <label for="supplierStatus">Status</label>
+            <select id="supplierStatus">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+
+            <div class="modal-actions">
+                <button type="button" class="secondary-button" data-close-modal="supplierModal">Cancel</button>
+                <button type="submit" class="primary-button">Save Supplier</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- PURCHASE ORDER MODAL -->
+<div class="modal" id="orderModal">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h2>New Purchase Order</h2>
+            <button class="icon-button" data-close-modal="orderModal">×</button>
+        </div>
+
+        <form id="orderForm">
+            <div class="form-grid">
+                <div>
+                    <label for="orderSupplier">Supplier</label>
+                    <select id="orderSupplier" required></select>
+                </div>
+                <div>
+                    <label for="orderWarehouse">Receive into warehouse</label>
+                    <select id="orderWarehouse" required></select>
+                </div>
+                <div>
+                    <label for="orderDate">Order date</label>
+                    <input id="orderDate" type="date">
+                </div>
+                <div>
+                    <label for="expectedDate">Expected date</label>
+                    <input id="expectedDate" type="date">
+                </div>
+            </div>
+
+            <label for="orderNote">Note</label>
+            <textarea id="orderNote"></textarea>
+
+            <div class="subsection-header">
+                <h3>Items</h3>
+                <button type="button" class="secondary-button" id="addOrderItemButton">+ Item</button>
+            </div>
+
+            <div id="orderItemsEditor"></div>
+
+            <div class="modal-actions">
+                <button type="button" class="secondary-button" data-close-modal="orderModal">Cancel</button>
+                <button type="submit" class="primary-button">Create Purchase Order</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ORDER DETAIL / RECEIVE MODAL -->
+<div class="modal" id="orderDetailModal">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <div>
+                <h2 id="orderDetailTitle">Purchase Order</h2>
+                <p id="orderDetailSubtitle"></p>
+            </div>
+            <button class="icon-button" data-close-modal="orderDetailModal">×</button>
+        </div>
+
+        <div id="orderDetailContent"></div>
     </div>
 </div>
 

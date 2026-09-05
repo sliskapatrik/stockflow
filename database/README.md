@@ -12,9 +12,18 @@
 6. Run `node createAdmin.js`.
 7. Start with `npm start`.
 
-## Upgrade from v0.1 to v0.2
+## Upgrade from v0.2 to v0.3
 
-No required table/column changes are needed because the v0.1 schema already contained
-the core Product, Warehouse, Warehouse Stock and Stock Movement tables.
+No mandatory new tables or columns are required.
 
-v0.2 adds application/API logic and optional indexes. Existing v0.1 databases can be used directly.
+The v0.2 schema already contained:
+
+- `suppliers`
+- `purchase_orders`
+- `purchase_order_items`
+- stock movement references
+
+v0.3 activates those structures in the application.
+
+The v0.3 fresh-install schema adds optional indexes for purchase order reporting/performance.
+Your existing v0.2 database can be used without alteration.

@@ -2,104 +2,131 @@
 
 StockFlow is a full-stack inventory, warehouse and purchasing management system built with Node.js, Express, MySQL/MariaDB and vanilla JavaScript.
 
-## v0.2 – Products, Warehouses & Stock
+# v0.3 – Suppliers & Purchase Orders
 
-This phase adds the first complete inventory workflow.
+This phase adds a complete purchasing workflow.
 
-### Products
+## Suppliers
 
-- create products
-- edit products
-- SKU
-- optional barcode
-- product description
-- unit
-- purchase price
-- reorder level
-- active / inactive status
-- total stock across all warehouses
-- low-stock indication
-- search by SKU, barcode or name
-- safe deletion for products without stock history
-
-### Warehouses
-
-- create warehouses
-- edit warehouses
-- warehouse code
-- warehouse name
+- create supplier
+- edit supplier
+- company name
+- contact name
+- email
+- phone
 - address
 - active / inactive status
-- product count per warehouse
-- total warehouse quantity
 
-### Stock Movements
+## Purchase Orders
 
-Supported movements:
+- create purchase order
+- automatic PO number
+- supplier
+- destination warehouse
+- order date
+- expected delivery date
+- notes
+- multiple products
+- ordered quantity
+- purchase price
+- total order value
+- order detail
 
+Human-readable order numbers are displayed as:
+
+```text
+PO-000001
+PO-000002
+```
+
+## Purchase Order Statuses
+
+```text
+Draft
+Ordered
+Partially Received
+Received
+Cancelled
+```
+
+## Partial Receiving
+
+Stock can be received in multiple deliveries.
+
+Example:
+
+```text
+Ordered: 100
+First receipt: 40
+Remaining: 60
+Status: Partially Received
+```
+
+Later:
+
+```text
+Second receipt: 60
+Remaining: 0
+Status: Received
+```
+
+Each receipt automatically:
+
+1. validates the remaining PO quantity
+2. prevents over-receipt
+3. increases stock in the PO destination warehouse
+4. increments `quantity_received`
+5. creates a normal `receipt` stock movement
+6. links the stock movement to the purchase order
+7. updates the PO status
+
+All operations are completed inside a MySQL transaction.
+
+## Receipt History
+
+Purchase order detail displays receipt history including:
+
+- product
+- quantity
+- warehouse
+- date/time
+- user
+- receipt note
+
+The receipt is also visible in normal Stock Movements.
+
+## Existing v0.2 Functionality Preserved
+
+- Products
+- SKU / barcode
+- Warehouses
+- Real stock quantities
 - Receipt
 - Issue
-- Adjustment In
-- Adjustment Out
-- Warehouse Transfer
+- Adjustments
+- Warehouse transfer
+- Low-stock dashboard
+- negative-stock protection
+- JWT authentication
+- roles
 
-Stock cannot become negative.
-
-Warehouse transfers are transactional:
-
-1. stock leaves the source warehouse
-2. stock enters the destination warehouse
-3. both movements share one transfer reference
-4. the whole operation rolls back if any step fails
-
-### Dashboard
-
-The dashboard now uses real database data:
-
-- active product count
-- total stock
-- low-stock product count
-- active warehouse count
-- low-stock product list
-
-### Roles
+## Roles
 
 - Admin
 - Warehouse
 - Purchasing
 
-Admin can manage warehouses and delete products where safe.
-Warehouse users are prepared to manage inventory operations.
-Purchasing will become active in v0.3.
+Purchasing and Admin can create suppliers and purchase orders.
+Warehouse, Purchasing and Admin can receive purchase order stock.
 
 ## Database
 
-`database/schema.sql` contains the complete fresh-install schema.
+No mandatory DB upgrade is required from v0.2 because the required purchasing tables already existed in the foundation schema.
 
-Upgrade from v0.1 requires no mandatory table or column changes because the initial schema already included the core inventory tables.
-
-## Run locally
-
-```bash
-cd backend
-npm install
-npm start
-```
-
-Default backend:
-
-```text
-http://localhost:3100
-```
-
-Health:
-
-```text
-http://localhost:3100/health
-```
+`database/schema.sql` remains the source of truth for fresh installations.
 
 ## Version
 
 ```text
-StockFlow v0.2.0
+StockFlow v0.3.0
 ```

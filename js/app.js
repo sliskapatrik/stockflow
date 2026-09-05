@@ -15,6 +15,9 @@ let currentUser = null;
 let products = [];
 let warehouses = [];
 let movements = [];
+let suppliers = [];
+let orders = [];
+let currentOrderDetail = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -100,6 +103,8 @@ async function showApp() {
     await Promise.all([
         loadProducts(),
         loadWarehouses(),
+        loadSuppliers(),
+        loadOrders(),
         loadDashboard()
     ]);
 }
@@ -157,6 +162,8 @@ document.querySelectorAll(".nav-item").forEach((button) => {
         if (name === "products") await loadProducts();
         if (name === "warehouses") await loadWarehouses();
         if (name === "movements") await loadMovements();
+        if (name === "suppliers") await loadSuppliers();
+        if (name === "orders") await loadOrders();
     });
 });
 
@@ -652,3 +659,469 @@ async function start() {
 }
 
 start();
+
+
+/* SUPPLIERS */
+
+async function loadSuppliers() {
+    try {
+        const response = await authFetch(`${API_URL}/suppliers`);
+        suppliers = await readApi(response);
+        renderSuppliers();
+        fillPurchasingSelectors();
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function renderSuppliers() {
+    const container = $("supplierList");
+    if (!container) return;
+
+    if (!suppliers.length) {
+        container.innerHTML = `<div class="empty-state">No suppliers found.</div>`;
+        return;
+    }
+
+    container.innerHTML = suppliers.map((supplier) => `
+        <div class="data-card">
+            <div>
+                <h3>${escapeHtml(supplier.companyName)}</h3>
+                <p>${escapeHtml(supplier.contactName || "No contact")}</p>
+                <div class="card-meta">
+                    ${supplier.email ? `<span>${escapeHtml(supplier.email)}</span>` : ""}
+                    ${supplier.phone ? `<span>${escapeHtml(supplier.phone)}</span>` : ""}
+                    ${supplier.address ? `<span>${escapeHtml(supplier.address)}</span>` : ""}
+                </div>
+            </div>
+            <div class="card-actions">
+                <span class="badge ${escapeHtml(supplier.status)}">${escapeHtml(supplier.status)}</span>
+                <button class="secondary-button" data-edit-supplier="${supplier.id}">Edit</button>
+            </div>
+        </div>
+    `).join("");
+
+    container.querySelectorAll("[data-edit-supplier]").forEach((button) => {
+        button.addEventListener("click", () => editSupplier(button.dataset.editSupplier));
+    });
+}
+
+$("addSupplierButton")?.addEventListener("click", () => {
+    $("supplierForm").reset();
+    $("supplierId").value = "";
+    $("supplierStatus").value = "active";
+    $("supplierModalTitle").textContent = "New Supplier";
+    openModal("supplierModal");
+});
+
+function editSupplier(id) {
+    const supplier = suppliers.find((item) => item.id === id);
+    if (!supplier) return;
+
+    $("supplierId").value = supplier.id;
+    $("supplierCompanyName").value = supplier.companyName;
+    $("supplierContactName").value = supplier.contactName || "";
+    $("supplierEmail").value = supplier.email || "";
+    $("supplierPhone").value = supplier.phone || "";
+    $("supplierAddress").value = supplier.address || "";
+    $("supplierStatus").value = supplier.status;
+    $("supplierModalTitle").textContent = "Edit Supplier";
+
+    openModal("supplierModal");
+}
+
+$("supplierForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const id = $("supplierId").value;
+    const data = {
+        companyName: $("supplierCompanyName").value.trim(),
+        contactName: $("supplierContactName").value.trim(),
+        email: $("supplierEmail").value.trim(),
+        phone: $("supplierPhone").value.trim(),
+        address: $("supplierAddress").value.trim(),
+        status: $("supplierStatus").value
+    };
+
+    try {
+        const response = await authFetch(
+            id ? `${API_URL}/suppliers/${id}` : `${API_URL}/suppliers`,
+            {
+                method: id ? "PUT" : "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            }
+        );
+
+        await readApi(response);
+        closeModal("supplierModal");
+        await loadSuppliers();
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+/* PURCHASE ORDERS */
+
+async function loadOrders() {
+    try {
+        const response = await authFetch(`${API_URL}/orders`);
+        orders = await readApi(response);
+        renderOrders();
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function renderOrders() {
+    const container = $("orderList");
+    if (!container) return;
+
+    if (!orders.length) {
+        container.innerHTML = `<div class="empty-state">No purchase orders found.</div>`;
+        return;
+    }
+
+    container.innerHTML = orders.map((order) => `
+        <div class="data-card">
+            <div>
+                <h3>${escapeHtml(order.displayNo)}</h3>
+                <p>${escapeHtml(order.supplierName)} · ${escapeHtml(order.warehouseCode)} - ${escapeHtml(order.warehouseName)}</p>
+                <div class="card-meta">
+                    <span>Items: ${order.itemCount}</span>
+                    <span>Total: CHF ${Number(order.totalValue).toFixed(2)}</span>
+                    ${order.orderDate ? `<span>Order: ${formatDateOnly(order.orderDate)}</span>` : ""}
+                    ${order.expectedDate ? `<span>Expected: ${formatDateOnly(order.expectedDate)}</span>` : ""}
+                </div>
+            </div>
+            <div class="card-actions">
+                <span class="badge status-${escapeHtml(order.status)}">${escapeHtml(formatOrderStatus(order.status))}</span>
+                <button class="secondary-button" data-open-order="${order.id}">Open</button>
+            </div>
+        </div>
+    `).join("");
+
+    container.querySelectorAll("[data-open-order]").forEach((button) => {
+        button.addEventListener("click", () => openOrderDetail(button.dataset.openOrder));
+    });
+}
+
+$("addOrderButton")?.addEventListener("click", () => {
+    $("orderForm").reset();
+    $("orderItemsEditor").innerHTML = "";
+    $("orderDate").value = new Date().toISOString().slice(0, 10);
+    fillPurchasingSelectors();
+    addOrderItemRow();
+    openModal("orderModal");
+});
+
+$("addOrderItemButton")?.addEventListener("click", addOrderItemRow);
+
+function fillPurchasingSelectors() {
+    if ($("orderSupplier")) {
+        $("orderSupplier").innerHTML = suppliers
+            .filter((item) => item.status === "active")
+            .map((supplier) =>
+                `<option value="${supplier.id}">${escapeHtml(supplier.companyName)}</option>`
+            ).join("");
+    }
+
+    if ($("orderWarehouse")) {
+        $("orderWarehouse").innerHTML = warehouses
+            .filter((item) => item.status === "active")
+            .map((warehouse) =>
+                `<option value="${warehouse.id}">${escapeHtml(warehouse.code)} - ${escapeHtml(warehouse.name)}</option>`
+            ).join("");
+    }
+}
+
+function addOrderItemRow() {
+    const wrapper = document.createElement("div");
+    wrapper.className = "order-item-row";
+    wrapper.innerHTML = `
+        <div>
+            <label>Product</label>
+            <select class="po-product" required>
+                ${products
+                    .filter((item) => item.status === "active")
+                    .map((product) =>
+                        `<option value="${product.id}" data-price="${Number(product.purchasePrice)}">${escapeHtml(product.sku)} - ${escapeHtml(product.name)}</option>`
+                    ).join("")}
+            </select>
+        </div>
+        <div>
+            <label>Quantity</label>
+            <input class="po-quantity" type="number" min="0.001" step="0.001" value="1" required>
+        </div>
+        <div>
+            <label>Unit price</label>
+            <input class="po-price" type="number" min="0" step="0.01" value="0" required>
+        </div>
+        <div>
+            <button type="button" class="danger-button remove-po-item">Remove</button>
+        </div>
+    `;
+
+    const productSelect = wrapper.querySelector(".po-product");
+    const priceInput = wrapper.querySelector(".po-price");
+
+    function syncPrice() {
+        const selected = productSelect.selectedOptions[0];
+        priceInput.value = selected ? Number(selected.dataset.price || 0).toFixed(2) : "0.00";
+    }
+
+    productSelect.addEventListener("change", syncPrice);
+    wrapper.querySelector(".remove-po-item").addEventListener("click", () => wrapper.remove());
+
+    syncPrice();
+    $("orderItemsEditor").appendChild(wrapper);
+}
+
+$("orderForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const rows = [...$("orderItemsEditor").querySelectorAll(".order-item-row")];
+
+    const items = rows.map((row) => ({
+        productId: row.querySelector(".po-product").value,
+        quantityOrdered: Number(row.querySelector(".po-quantity").value),
+        unitPrice: Number(row.querySelector(".po-price").value)
+    }));
+
+    if (!items.length) {
+        alert("Add at least one item.");
+        return;
+    }
+
+    try {
+        const response = await authFetch(`${API_URL}/orders`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                supplierId: $("orderSupplier").value,
+                warehouseId: $("orderWarehouse").value,
+                orderDate: $("orderDate").value || null,
+                expectedDate: $("expectedDate").value || null,
+                note: $("orderNote").value.trim(),
+                items
+            })
+        });
+
+        await readApi(response);
+        closeModal("orderModal");
+        await loadOrders();
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+async function openOrderDetail(id) {
+    try {
+        const response = await authFetch(`${API_URL}/orders/${id}`);
+        currentOrderDetail = await readApi(response);
+
+        $("orderDetailTitle").textContent = currentOrderDetail.displayNo;
+        $("orderDetailSubtitle").textContent =
+            `${currentOrderDetail.supplierName} · ${currentOrderDetail.warehouseCode} - ${currentOrderDetail.warehouseName}`;
+
+        renderOrderDetail();
+        openModal("orderDetailModal");
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+function renderOrderDetail() {
+    const order = currentOrderDetail;
+    if (!order) return;
+
+    const total = order.items.reduce(
+        (sum, item) => sum + Number(item.quantityOrdered) * Number(item.unitPrice),
+        0
+    );
+
+    const canReceive = !["received", "cancelled"].includes(order.status);
+
+    $("orderDetailContent").innerHTML = `
+        <div class="order-summary-grid">
+            <div class="summary-box">
+                <span>Status</span>
+                <strong>${escapeHtml(formatOrderStatus(order.status))}</strong>
+            </div>
+            <div class="summary-box">
+                <span>Order date</span>
+                <strong>${order.orderDate ? formatDateOnly(order.orderDate) : "—"}</strong>
+            </div>
+            <div class="summary-box">
+                <span>Expected</span>
+                <strong>${order.expectedDate ? formatDateOnly(order.expectedDate) : "—"}</strong>
+            </div>
+            <div class="summary-box">
+                <span>Total</span>
+                <strong>CHF ${total.toFixed(2)}</strong>
+            </div>
+        </div>
+
+        <table class="order-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Ordered</th>
+                    <th>Received</th>
+                    <th>Remaining</th>
+                    <th>Unit price</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${order.items.map((item) => `
+                    <tr>
+                        <td>${escapeHtml(item.sku)} - ${escapeHtml(item.productName)}</td>
+                        <td>${formatQuantity(item.quantityOrdered)} ${escapeHtml(item.unit)}</td>
+                        <td>${formatQuantity(item.quantityReceived)} ${escapeHtml(item.unit)}</td>
+                        <td>${formatQuantity(Number(item.quantityOrdered) - Number(item.quantityReceived))} ${escapeHtml(item.unit)}</td>
+                        <td>CHF ${Number(item.unitPrice).toFixed(2)}</td>
+                    </tr>
+                `).join("")}
+            </tbody>
+        </table>
+
+        ${canReceive ? `
+            <div class="subsection-header">
+                <h3>Receive stock</h3>
+            </div>
+
+            <div id="receiveItemsEditor">
+                ${order.items.map((item) => {
+                    const remaining = Math.max(0, Number(item.quantityOrdered) - Number(item.quantityReceived));
+                    return `
+                        <div class="receive-item-row">
+                            <div>
+                                <strong>${escapeHtml(item.sku)} - ${escapeHtml(item.productName)}</strong>
+                                <div class="card-meta">
+                                    <span>Remaining: ${formatQuantity(remaining)} ${escapeHtml(item.unit)}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label>Receive now</label>
+                                <input class="receive-quantity"
+                                       data-item-id="${item.id}"
+                                       type="number"
+                                       min="0"
+                                       max="${remaining}"
+                                       step="0.001"
+                                       value="0">
+                            </div>
+                            <div></div>
+                        </div>
+                    `;
+                }).join("")}
+            </div>
+
+            <label for="receiveOrderNote">Receipt note</label>
+            <textarea id="receiveOrderNote" placeholder="Delivery note, invoice reference, condition..."></textarea>
+
+            <div class="modal-actions">
+                ${order.status === "draft"
+                    ? `<button class="secondary-button" id="markOrderOrderedButton">Mark Ordered</button>`
+                    : ""}
+                <button class="primary-button" id="receiveOrderButton">Receive Selected Stock</button>
+            </div>
+        ` : ""}
+
+        <div class="subsection-header">
+            <h3>Receipt history</h3>
+        </div>
+
+        <div class="data-list">
+            ${order.receipts.length ? order.receipts.map((receipt) => `
+                <div class="data-card">
+                    <div>
+                        <h3>${escapeHtml(receipt.productName)}</h3>
+                        <p>${escapeHtml(receipt.sku)} · ${escapeHtml(receipt.warehouseCode)} - ${escapeHtml(receipt.warehouseName)}</p>
+                        <div class="card-meta">
+                            <span>Received: ${formatQuantity(receipt.quantity)} ${escapeHtml(receipt.unit)}</span>
+                            <span>${formatDateTime(receipt.createdAt)}</span>
+                            ${receipt.createdBy ? `<span>By: ${escapeHtml(receipt.createdBy)}</span>` : ""}
+                            ${receipt.note ? `<span>${escapeHtml(receipt.note)}</span>` : ""}
+                        </div>
+                    </div>
+                </div>
+            `).join("") : `<div class="empty-state">No receipts yet.</div>`}
+        </div>
+    `;
+
+    $("receiveOrderButton")?.addEventListener("click", receiveCurrentOrder);
+    $("markOrderOrderedButton")?.addEventListener("click", () => setOrderStatus(order.id, "ordered"));
+}
+
+async function setOrderStatus(id, status) {
+    try {
+        const response = await authFetch(`${API_URL}/orders/${id}/status`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status })
+        });
+
+        await readApi(response);
+        await Promise.all([loadOrders(), openOrderDetail(id)]);
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+async function receiveCurrentOrder() {
+    const order = currentOrderDetail;
+    const inputs = [...$("receiveItemsEditor").querySelectorAll(".receive-quantity")];
+
+    const receipts = inputs
+        .map((input) => ({
+            itemId: input.dataset.itemId,
+            quantity: Number(input.value || 0)
+        }))
+        .filter((item) => item.quantity > 0);
+
+    if (!receipts.length) {
+        alert("Enter a quantity for at least one item.");
+        return;
+    }
+
+    try {
+        const response = await authFetch(`${API_URL}/orders/${order.id}/receive`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                receipts,
+                note: $("receiveOrderNote").value.trim()
+            })
+        });
+
+        await readApi(response);
+
+        await Promise.all([
+            loadOrders(),
+            loadProducts(),
+            loadWarehouses(),
+            loadDashboard(),
+            loadMovements()
+        ]);
+
+        await openOrderDetail(order.id);
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+function formatOrderStatus(status) {
+    return {
+        draft: "Draft",
+        ordered: "Ordered",
+        partially_received: "Partially Received",
+        received: "Received",
+        cancelled: "Cancelled"
+    }[status] || status;
+}
+
+function formatDateOnly(value) {
+    if (!value) return "";
+    return String(value).slice(0, 10);
+}

@@ -1,4 +1,4 @@
--- StockFlow complete database schema v0.2
+-- StockFlow complete database schema v0.3
 -- Import into an EMPTY MySQL/MariaDB database named `stockflow`.
 
 SET NAMES utf8mb4;
@@ -129,6 +129,10 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     UNIQUE KEY uq_purchase_orders_order_no (order_no),
+    KEY idx_purchase_orders_supplier (supplier_id),
+    KEY idx_purchase_orders_warehouse (warehouse_id),
+    KEY idx_purchase_orders_status (status),
+    KEY idx_purchase_orders_created_at (created_at),
 
     CONSTRAINT fk_po_supplier
         FOREIGN KEY (supplier_id)
@@ -151,6 +155,9 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
     quantity_ordered DECIMAL(14,3) NOT NULL,
     quantity_received DECIMAL(14,3) NOT NULL DEFAULT 0,
     unit_price DECIMAL(12,2) NOT NULL DEFAULT 0,
+
+    KEY idx_po_items_order (purchase_order_id),
+    KEY idx_po_items_product (product_id),
 
     CONSTRAINT fk_po_items_order
         FOREIGN KEY (purchase_order_id)
