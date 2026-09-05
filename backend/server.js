@@ -15,6 +15,8 @@ const suppliersRoutes = require("./routes/suppliersRoutes");
 const ordersRoutes = require("./routes/ordersRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
 const productivityRoutes = require("./routes/productivityRoutes");
+const reportsRoutes = require("./routes/reportsRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 3100;
@@ -45,6 +47,8 @@ app.use("/api/suppliers", suppliersRoutes);
 app.use("/api/orders", ordersRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/productivity", productivityRoutes);
+app.use("/api/reports", reportsRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/health", async function (req, res) {
     try {
@@ -53,13 +57,13 @@ app.get("/health", async function (req, res) {
         res.json({
             status: "ok",
             database: "connected",
-            version: "0.5.0"
+            version: "0.6.0"
         });
     } catch (error) {
         res.status(503).json({
             status: "error",
             database: "disconnected",
-            version: "0.5.0"
+            version: "0.6.0"
         });
     }
 });
@@ -68,7 +72,7 @@ app.get("/api/status", function (req, res) {
     res.json({
         success: true,
         message: "StockFlow backend is online",
-        version: "0.5.0"
+        version: "0.6.0"
     });
 });
 
@@ -93,5 +97,5 @@ app.use("/api", function (req, res) {
 });
 
 app.listen(PORT, function () {
-    console.log(`StockFlow v0.5 running on http://localhost:${PORT}`);
+    console.log(`StockFlow v0.6 running on http://localhost:${PORT}`);
 });

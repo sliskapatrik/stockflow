@@ -23,6 +23,8 @@ let currentInventoryCount = null;
 let warehouseLocations = [];
 let savedViews = [];
 let selectedLookupProductId = null;
+let adminUsers = [];
+let appSettings = {};
 
 const $ = (id) => document.getElementById(id);
 
@@ -105,6 +107,8 @@ async function showApp() {
     $("currentUserName").textContent = currentUser.name;
     $("currentUserRole").textContent = currentUser.role;
 
+    applyRoleUi();
+
     await Promise.all([
         loadProducts(),
         loadWarehouses(),
@@ -144,7 +148,9 @@ const viewTitles = {
     suppliers: ["Suppliers", "Supplier directory"],
     orders: ["Purchase Orders", "Purchasing workflow"],
     inventory: ["Inventory Operations", "Physical counts, reorder suggestions and stock audit"],
-    productivity: ["Scanner & Productivity", "Barcode, QR, quick stock lookup and saved views"]
+    productivity: ["Scanner & Productivity", "Barcode, QR, quick stock lookup and saved views"],
+    reports: ["Reports", "Stock valuation, movements, suppliers and purchasing"],
+    admin: ["Admin", "Users, settings and system overview"]
 };
 
 document.querySelectorAll(".nav-item").forEach((button) => {
@@ -173,6 +179,8 @@ document.querySelectorAll(".nav-item").forEach((button) => {
         if (name === "orders") await loadOrders();
         if (name === "inventory") await loadInventoryOperations();
         if (name === "productivity") await loadProductivity();
+        if (name === "reports") await loadReports();
+        if (name === "admin") await loadAdmin();
     });
 });
 
@@ -1890,3 +1898,412 @@ function ensureSavedViewButtons() {
 }
 
 setTimeout(ensureSavedViewButtons, 0);
+
+
+/* ROLE UI */
+
+function applyRoleUi() {
+    const isAdmin = currentUser?.role === "admin";
+
+    document.querySelectorAll(".admin-only").forEach((element) => {
+        element.classList.toggle("hidden-role", !isAdmin);
+    });
+}
+
+/* REPORTS */
+
+async function loadReports() {
+    if (currentUser.role !== "admin") return;
+
+    await Promise.all([
+        loadReportOverview(),
+        runMovementReport(),
+        loadSupplierReport(),
+        loadPurchasingReport()
+    ]);
+
+    fillReportWarehouseFilter();
+}
+
+async function loadReportOverview() {
+    try {
+        const response = await authFetch(`${API_URL}/reports/overview`);
+        const data = await readApi(response);
+
+        $("reportStockValue").textContent = `CHF ${Number(data.stockValue).toFixed(2)}`;
+        $("reportOpenOrders").textContent = data.openOrders;
+        $("reportPurchasingValue").textContent = `CHF ${Number(data.purchasingValue).toFixed(2)}`;
+        $("reportActiveSuppliers").textContent = data.activeSuppliers;
+
+        $("warehouseValuationList").innerHTML = data.warehouseValues.length
+            ? data.warehouseValues.map((row) => `
+                <div class="data-card">
+                    <div>
+                        <h3>${escapeHtml(row.code)} - ${escapeHtml(row.name)}</h3>
+                        <div class="card-meta">
+                            <span>Quantity: ${formatQuantity(row.totalQuantity)}</span>
+                            <span>Stock value: CHF ${Number(row.stockValue).toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join("")
+            : `<div class="empty-state">No warehouse valuation data.</div>`;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function fillReportWarehouseFilter() {
+    if (!$("reportWarehouseFilter")) return;
+
+    const current = $("reportWarehouseFilter").value;
+
+    $("reportWarehouseFilter").innerHTML =
+        `<option value="">All warehouses</option>` +
+        warehouses.map((warehouse) =>
+            `<option value="${warehouse.id}">${escapeHtml(warehouse.code)} - ${escapeHtml(warehouse.name)}</option>`
+        ).join("");
+
+    $("reportWarehouseFilter").value = current;
+}
+
+async function runMovementReport() {
+    if (!$("movementReportList")) return;
+
+    try {
+        const params = new URLSearchParams();
+
+        if ($("reportWarehouseFilter")?.value) {
+            params.set("warehouseId", $("reportWarehouseFilter").value);
+        }
+
+        if ($("reportMovementTypeFilter")?.value) {
+            params.set("type", $("reportMovementTypeFilter").value);
+        }
+
+        if ($("reportFromDate")?.value) {
+            params.set("from", $("reportFromDate").value);
+        }
+
+        if ($("reportToDate")?.value) {
+            params.set("to", $("reportToDate").value);
+        }
+
+        const response = await authFetch(`${API_URL}/reports/movements?${params.toString()}`);
+        const rows = await readApi(response);
+
+        $("movementReportList").innerHTML = rows.length
+            ? rows.map((row) => `
+                <div class="data-card">
+                    <div>
+                        <h3>${escapeHtml(row.productName)}</h3>
+                        <p>${escapeHtml(row.sku)} · ${escapeHtml(row.warehouseCode)} - ${escapeHtml(row.warehouseName)}</p>
+                        <div class="card-meta">
+                            <span>${escapeHtml(formatMovementType(row.movementType))}</span>
+                            <span>Qty: ${formatQuantity(row.quantity)} ${escapeHtml(row.unit)}</span>
+                            <span>${formatDateTime(row.createdAt)}</span>
+                            ${row.referenceType ? `<span>Ref: ${escapeHtml(row.referenceType)}</span>` : ""}
+                            ${row.createdBy ? `<span>By: ${escapeHtml(row.createdBy)}</span>` : ""}
+                        </div>
+                    </div>
+                </div>
+            `).join("")
+            : `<div class="empty-state">No report rows found.</div>`;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+$("runMovementReportButton")?.addEventListener("click", runMovementReport);
+
+$("exportMovementCsvButton")?.addEventListener("click", async () => {
+    try {
+        const response = await authFetch(`${API_URL}/reports/export/movements.csv`);
+
+        if (!response.ok) {
+            throw new Error("CSV export failed");
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = "stockflow-movements.csv";
+        anchor.click();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+async function loadSupplierReport() {
+    try {
+        const response = await authFetch(`${API_URL}/reports/suppliers`);
+        const rows = await readApi(response);
+
+        $("supplierReportList").innerHTML = rows.length
+            ? rows.map((row) => `
+                <div class="data-card">
+                    <div>
+                        <h3>${escapeHtml(row.companyName)}</h3>
+                        <div class="card-meta">
+                            <span>Orders: ${row.orderCount}</span>
+                            <span>Ordered value: CHF ${Number(row.orderedValue).toFixed(2)}</span>
+                            <span>Received value: CHF ${Number(row.receivedValue).toFixed(2)}</span>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <span class="badge ${escapeHtml(row.status)}">${escapeHtml(row.status)}</span>
+                    </div>
+                </div>
+            `).join("")
+            : `<div class="empty-state">No supplier report data.</div>`;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+async function loadPurchasingReport() {
+    try {
+        const response = await authFetch(`${API_URL}/reports/purchasing`);
+        const rows = await readApi(response);
+
+        $("purchasingReportList").innerHTML = rows.length
+            ? rows.map((row) => `
+                <div class="data-card">
+                    <div>
+                        <h3>${escapeHtml(row.displayNo)}</h3>
+                        <p>${escapeHtml(row.supplierName)} · ${escapeHtml(row.warehouseCode)}</p>
+                        <div class="card-meta">
+                            <span>Status: ${escapeHtml(formatOrderStatus(row.status))}</span>
+                            <span>Total: CHF ${Number(row.totalValue).toFixed(2)}</span>
+                            <span>Received: CHF ${Number(row.receivedValue).toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join("")
+            : `<div class="empty-state">No purchasing report data.</div>`;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+/* ADMIN */
+
+async function loadAdmin() {
+    if (currentUser.role !== "admin") return;
+
+    await Promise.all([
+        loadAdminUsers(),
+        loadSettings(),
+        loadSystemOverview()
+    ]);
+}
+
+document.querySelectorAll(".admin-tab").forEach((button) => {
+    button.addEventListener("click", () => {
+        document.querySelectorAll(".admin-tab").forEach((item) =>
+            item.classList.remove("active")
+        );
+        document.querySelectorAll(".admin-panel").forEach((panel) =>
+            panel.classList.remove("active")
+        );
+
+        button.classList.add("active");
+
+        const tab = button.dataset.adminTab;
+        if (tab === "users") $("adminUsersPanel").classList.add("active");
+        if (tab === "settings") $("adminSettingsPanel").classList.add("active");
+        if (tab === "system") $("adminSystemPanel").classList.add("active");
+    });
+});
+
+async function loadAdminUsers() {
+    try {
+        const response = await authFetch(`${API_URL}/admin/users`);
+        adminUsers = await readApi(response);
+        renderAdminUsers();
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function renderAdminUsers() {
+    const container = $("userList");
+    if (!container) return;
+
+    container.innerHTML = adminUsers.length
+        ? adminUsers.map((user) => `
+            <div class="data-card">
+                <div>
+                    <h3>${escapeHtml(user.name)}</h3>
+                    <p>${escapeHtml(user.email)}</p>
+                    <div class="card-meta">
+                        <span>Role: ${escapeHtml(user.role)}</span>
+                        <span>Status: ${escapeHtml(user.status)}</span>
+                        <span>Created: ${formatDateTime(user.createdAt)}</span>
+                    </div>
+                </div>
+                <div class="card-actions">
+                    <button class="secondary-button" data-edit-user="${user.id}">Edit</button>
+                    <button class="secondary-button" data-reset-user="${user.id}">Reset Password</button>
+                </div>
+            </div>
+        `).join("")
+        : `<div class="empty-state">No users found.</div>`;
+
+    container.querySelectorAll("[data-edit-user]").forEach((button) => {
+        button.addEventListener("click", () => editUser(button.dataset.editUser));
+    });
+
+    container.querySelectorAll("[data-reset-user]").forEach((button) => {
+        button.addEventListener("click", () => resetUserPassword(button.dataset.resetUser));
+    });
+}
+
+$("addUserButton")?.addEventListener("click", () => {
+    $("userForm").reset();
+    $("userId").value = "";
+    $("userStatus").value = "active";
+    $("userRole").value = "warehouse";
+    $("userModalTitle").textContent = "New User";
+    $("newUserPasswordWrap").style.display = "";
+    openModal("userModal");
+});
+
+function editUser(id) {
+    const user = adminUsers.find((item) => item.id === id);
+    if (!user) return;
+
+    $("userId").value = user.id;
+    $("userName").value = user.name;
+    $("userEmail").value = user.email;
+    $("userRole").value = user.role;
+    $("userStatus").value = user.status;
+    $("userPassword").value = "";
+    $("newUserPasswordWrap").style.display = "none";
+    $("userModalTitle").textContent = "Edit User";
+    openModal("userModal");
+}
+
+$("userForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const id = $("userId").value;
+    const data = {
+        name: $("userName").value.trim(),
+        email: $("userEmail").value.trim(),
+        role: $("userRole").value,
+        status: $("userStatus").value
+    };
+
+    if (!id) {
+        data.password = $("userPassword").value;
+    }
+
+    try {
+        const response = await authFetch(
+            id ? `${API_URL}/admin/users/${id}` : `${API_URL}/admin/users`,
+            {
+                method: id ? "PUT" : "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            }
+        );
+
+        await readApi(response);
+        closeModal("userModal");
+        await loadAdminUsers();
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+async function resetUserPassword(id) {
+    const password = prompt("New temporary password:");
+    if (!password) return;
+
+    try {
+        const response = await authFetch(`${API_URL}/admin/users/${id}/reset-password`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password })
+        });
+
+        await readApi(response);
+        alert("Password reset successfully.");
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+async function loadSettings() {
+    try {
+        const response = await authFetch(`${API_URL}/admin/settings`);
+        appSettings = await readApi(response);
+
+        $("settingAppName").value = appSettings.app_name || "StockFlow";
+        $("settingCurrency").value = appSettings.default_currency || "CHF";
+        $("settingMinPassword").value = appSettings.minimum_password_length || "8";
+        $("settingReorderMultiplier").value = appSettings.default_reorder_multiplier || "2";
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+$("settingsForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    try {
+        const response = await authFetch(`${API_URL}/admin/settings`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                app_name: $("settingAppName").value.trim(),
+                default_currency: $("settingCurrency").value.trim(),
+                minimum_password_length: $("settingMinPassword").value,
+                default_reorder_multiplier: $("settingReorderMultiplier").value
+            })
+        });
+
+        await readApi(response);
+        await Promise.all([loadSettings(), loadSystemOverview()]);
+        alert("Settings saved.");
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+async function loadSystemOverview() {
+    try {
+        const response = await authFetch(`${API_URL}/admin/system-overview`);
+        const data = await readApi(response);
+
+        $("systemTotalUsers").textContent = data.totalUsers;
+        $("systemActiveUsers").textContent = data.activeUsers;
+        $("systemProducts").textContent = data.activeProducts;
+        $("systemWarehouses").textContent = data.activeWarehouses;
+
+        $("databaseInfo").textContent =
+            `${data.databaseName} · ${data.databaseVersion} · ${formatDateTime(data.databaseTime)}`;
+
+        $("adminAuditList").innerHTML = data.audit.length
+            ? data.audit.map((entry) => `
+                <div class="data-card">
+                    <div>
+                        <h3>${escapeHtml(entry.action)}</h3>
+                        <p>${escapeHtml(entry.entityType)} · ${escapeHtml(entry.entityId || "")}</p>
+                        <div class="card-meta">
+                            <span>${formatDateTime(entry.createdAt)}</span>
+                            ${entry.userName ? `<span>By: ${escapeHtml(entry.userName)}</span>` : ""}
+                            ${entry.oldValue !== null ? `<span class="audit-json">Old: ${escapeHtml(entry.oldValue)}</span>` : ""}
+                            ${entry.newValue !== null ? `<span class="audit-json">New: ${escapeHtml(entry.newValue)}</span>` : ""}
+                        </div>
+                    </div>
+                </div>
+            `).join("")
+            : `<div class="empty-state">No admin audit events yet.</div>`;
+    } catch (error) {
+        console.error(error);
+    }
+}

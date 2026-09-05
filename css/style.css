@@ -481,3 +481,75 @@ textarea { min-height: 100px; resize: vertical; }
         grid-column: auto;
     }
 }
+
+
+.admin-only.hidden-role {
+    display: none !important;
+}
+
+.report-section {
+    margin-top: 18px;
+}
+
+.report-toolbar {
+    flex-wrap: wrap;
+}
+
+.report-toolbar select,
+.report-toolbar input {
+    max-width: 220px;
+}
+
+.admin-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+.admin-tab {
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    background: #e9edf2;
+    color: #344054;
+}
+
+.admin-tab.active {
+    background: #1f6feb;
+    color: white;
+}
+
+.admin-panel {
+    display: none;
+}
+
+.admin-panel.active {
+    display: block;
+}
+
+.settings-form {
+    max-width: 620px;
+}
+
+.settings-form input {
+    margin-bottom: 16px;
+}
+
+.metric-value {
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.audit-json {
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    color: #667085;
+}
+
+@media (max-width: 800px) {
+    .report-toolbar select,
+    .report-toolbar input {
+        max-width: none;
+    }
+}

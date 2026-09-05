@@ -12,17 +12,19 @@
 6. Run `node createAdmin.js`.
 7. Start with `npm start`.
 
-## Upgrade from v0.4 to v0.5
+## Upgrade from v0.5 to v0.6
 
 Run once in HeidiSQL:
 
 ```text
-database/upgrade-v0.4-to-v0.5.sql
+database/upgrade-v0.5-to-v0.6.sql
 ```
 
 This creates:
 
-- `warehouse_locations`
-- `saved_views`
+- `app_settings`
+- `admin_audit`
+
+and inserts default application settings.
 
 No JavaScript migration files are used.

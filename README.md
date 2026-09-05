@@ -2,126 +2,155 @@
 
 StockFlow is a full-stack inventory, warehouse and purchasing management system built with Node.js, Express, MySQL/MariaDB and vanilla JavaScript.
 
-# v0.5 – Barcode / QR & Productivity
+# v0.6 – Reporting, Admin & Security
 
-This phase focuses on faster warehouse work.
+This phase completes the main application feature set before the final v1.0 portfolio release.
 
-## Scanner / Lookup
+## Reporting
 
-The Scanner & Productivity page accepts:
+Admin users now have a Reports section with:
 
-- barcode
-- SKU
-- product name
-- warehouse code
-- warehouse location code
-- QR identifier
+### Stock valuation
+- total stock value
+- total stock quantity
+- valuation by warehouse
 
-A real USB/Bluetooth barcode scanner that behaves like a keyboard can type directly into the lookup field.
+### Movement report
+- warehouse filter
+- movement type filter
+- from date
+- to date
+- chronological results
 
-When exactly one product is found, StockFlow automatically selects it for quick stock operations.
+### Supplier performance
+- purchase order count
+- ordered value
+- received value
 
-## Fast Stock Lookup
-
-Product lookup shows:
-
-- total stock
-- stock split across active warehouses
-
-Example:
-
-```text
-CAB-CAT6-100 - CAT6 Network Cable 100m
-MAIN: 8
-SECOND: 12
-Total: 20
-```
-
-## Quick Receipt / Issue
-
-After scanning a product:
-
-```text
-Product
-Warehouse
-Quick Receipt / Quick Issue
-Quantity
-Note
-```
-
-can be posted without opening the full Stock Movement form.
-
-Quick operations still:
-
-- use MySQL transactions
-- prevent negative stock
-- create normal stock movement history
-- include the logged-in user
-- use reference type `quick_scan`
-
-## Warehouse Locations / QR
-
-Warehouses can now have internal scan-friendly locations such as:
-
-```text
-A-01-03
-Rack A / Shelf 01 / Bin 03
-QR: LOC-A-01-03
-```
-
-Each location includes:
-
+### Purchasing report
+- PO number
+- supplier
 - warehouse
-- location code
-- unique QR identifier
-- name
-- active/inactive status
+- status
+- order value
+- received value
 
-The current v0.5 scope treats QR values as identifiers. A physical QR label can encode this text and scanners can enter it into StockFlow.
+### CSV export
+Stock movements can be exported to:
 
-## Saved Views
+```text
+stockflow-movements.csv
+```
 
-Users can save:
+## Admin / User Management
 
-### Product views
-- product search query
+Admin can:
 
-### Movement views
-- selected warehouse
-- movement type
+- create users
+- edit users
+- change role
+- activate / deactivate accounts
+- reset passwords
 
-Saved views belong to the logged-in user.
+Roles:
+
+```text
+admin
+warehouse
+purchasing
+```
+
+The logged-in Admin cannot deactivate their own account.
+
+## Application Settings
+
+Settings include:
+
+```text
+Application name
+Default currency
+Minimum password length
+Default reorder multiplier
+```
+
+Settings are stored in the database.
+
+## Admin Audit
+
+Changes to application settings are stored in:
+
+```text
+admin_audit
+```
+
+with:
+
+- user
+- action
+- entity
+- old value
+- new value
+- timestamp
+
+## System Overview
+
+Admin can view:
+
+- total users
+- active users
+- active products
+- active warehouses
+- database name
+- database version
+- database time
+- recent admin audit events
+
+## Security / Validation
+
+v0.6 strengthens:
+
+- role checks on reporting and admin APIs
+- user email uniqueness
+- minimum password length enforcement
+- own-account deactivation protection
+- backend validation
+- protected CSV export
+- bcrypt password hashing
+- JWT authentication
+- login rate limiting
+- negative-stock prevention
+- transactional stock operations
 
 ## Existing Functionality Preserved
 
-- Products / SKU / barcode
+- Products
 - Warehouses
-- stock quantities
-- receipts / issues
-- adjustments
-- transfers
+- Stock Movements
+- Transfers
 - Suppliers
 - Purchase Orders
-- partial receiving
+- Partial Receiving
 - Inventory Counts
 - Reorder Suggestions
 - Stock Audit
-- low-stock dashboard
-- roles and authentication
+- Barcode / SKU lookup
+- Quick receipt / issue
+- Warehouse QR locations
+- Saved Views
 
 ## Database Upgrade
 
-For an existing v0.4 database run once:
+For an existing v0.5 database run once:
 
 ```text
-database/upgrade-v0.4-to-v0.5.sql
+database/upgrade-v0.5-to-v0.6.sql
 ```
 
 It adds:
 
 ```text
-warehouse_locations
-saved_views
+app_settings
+admin_audit
 ```
 
 For a clean installation use:
@@ -133,5 +162,5 @@ database/schema.sql
 ## Version
 
 ```text
-StockFlow v0.5.0
+StockFlow v0.6.0
 ```

@@ -38,6 +38,8 @@
             <button class="nav-item" data-view="movements">Stock Movements</button>
             <button class="nav-item" data-view="inventory">Inventory Operations</button>
             <button class="nav-item" data-view="productivity">Scanner & Productivity</button>
+            <button class="nav-item admin-only" data-view="reports">Reports</button>
+            <button class="nav-item admin-only" data-view="admin">Admin</button>
             <button class="nav-item" data-view="suppliers">Suppliers</button>
             <button class="nav-item" data-view="orders">Purchase Orders</button>
         </nav>
@@ -263,6 +265,164 @@
                     </div>
                     <div id="savedViewList" class="data-list"></div>
                 </div>
+            </div>
+        </section>
+
+
+        <section class="view" id="reportsView">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span>Stock Value</span>
+                    <strong id="reportStockValue">CHF 0.00</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Open Purchase Orders</span>
+                    <strong id="reportOpenOrders">0</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Purchasing Value</span>
+                    <strong id="reportPurchasingValue">CHF 0.00</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Active Suppliers</span>
+                    <strong id="reportActiveSuppliers">0</strong>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Warehouse Stock Valuation</h2>
+                        <p>Stock quantity and purchase-value by warehouse.</p>
+                    </div>
+                </div>
+                <div id="warehouseValuationList" class="data-list"></div>
+            </div>
+
+            <div class="panel report-section">
+                <div class="panel-header">
+                    <div>
+                        <h2>Movement Report</h2>
+                        <p>Filter stock activity and export it to CSV.</p>
+                    </div>
+                    <button class="secondary-button" id="exportMovementCsvButton">Export CSV</button>
+                </div>
+
+                <div class="toolbar report-toolbar">
+                    <select id="reportWarehouseFilter">
+                        <option value="">All warehouses</option>
+                    </select>
+                    <select id="reportMovementTypeFilter">
+                        <option value="">All movement types</option>
+                        <option value="receipt">Receipt</option>
+                        <option value="issue">Issue</option>
+                        <option value="adjustment_in">Adjustment In</option>
+                        <option value="adjustment_out">Adjustment Out</option>
+                        <option value="transfer_in">Transfer In</option>
+                        <option value="transfer_out">Transfer Out</option>
+                    </select>
+                    <input id="reportFromDate" type="date">
+                    <input id="reportToDate" type="date">
+                    <button class="primary-button" id="runMovementReportButton">Run</button>
+                </div>
+
+                <div id="movementReportList" class="data-list"></div>
+            </div>
+
+            <div class="panel report-section">
+                <div class="panel-header">
+                    <div>
+                        <h2>Supplier Performance</h2>
+                        <p>Order count, ordered value and received value by supplier.</p>
+                    </div>
+                </div>
+                <div id="supplierReportList" class="data-list"></div>
+            </div>
+
+            <div class="panel report-section">
+                <div class="panel-header">
+                    <div>
+                        <h2>Purchasing Report</h2>
+                        <p>Purchase order values and fulfillment progress.</p>
+                    </div>
+                </div>
+                <div id="purchasingReportList" class="data-list"></div>
+            </div>
+        </section>
+
+        <section class="view" id="adminView">
+            <div class="admin-tabs">
+                <button class="admin-tab active" data-admin-tab="users">Users</button>
+                <button class="admin-tab" data-admin-tab="settings">Settings</button>
+                <button class="admin-tab" data-admin-tab="system">System Overview</button>
+            </div>
+
+            <div class="panel admin-panel active" id="adminUsersPanel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Users</h2>
+                        <p>Manage Admin, Warehouse and Purchasing accounts.</p>
+                    </div>
+                    <button class="primary-button" id="addUserButton">+ User</button>
+                </div>
+                <div id="userList" class="data-list"></div>
+            </div>
+
+            <div class="panel admin-panel" id="adminSettingsPanel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Application Settings</h2>
+                        <p>Core operational and security settings.</p>
+                    </div>
+                </div>
+
+                <form id="settingsForm" class="settings-form">
+                    <label for="settingAppName">Application name</label>
+                    <input id="settingAppName" required>
+
+                    <label for="settingCurrency">Default currency</label>
+                    <input id="settingCurrency" maxlength="10" required>
+
+                    <label for="settingMinPassword">Minimum password length</label>
+                    <input id="settingMinPassword" type="number" min="8" max="64" required>
+
+                    <label for="settingReorderMultiplier">Default reorder multiplier</label>
+                    <input id="settingReorderMultiplier" type="number" min="1" step="0.1" required>
+
+                    <div class="modal-actions">
+                        <button class="primary-button" type="submit">Save Settings</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="panel admin-panel" id="adminSystemPanel">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span>Total Users</span>
+                        <strong id="systemTotalUsers">0</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span>Active Users</span>
+                        <strong id="systemActiveUsers">0</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span>Products</span>
+                        <strong id="systemProducts">0</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span>Warehouses</span>
+                        <strong id="systemWarehouses">0</strong>
+                    </div>
+                </div>
+
+                <div class="panel-header">
+                    <div>
+                        <h2>System</h2>
+                        <p id="databaseInfo">Database information</p>
+                    </div>
+                </div>
+
+                <div id="adminAuditList" class="data-list"></div>
             </div>
         </section>
 
@@ -597,6 +757,50 @@
             <div class="modal-actions">
                 <button type="button" class="secondary-button" data-close-modal="locationModal">Cancel</button>
                 <button type="submit" class="primary-button">Save Location</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- USER MODAL -->
+<div class="modal" id="userModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="userModalTitle">New User</h2>
+            <button class="icon-button" data-close-modal="userModal">×</button>
+        </div>
+
+        <form id="userForm">
+            <input type="hidden" id="userId">
+
+            <label for="userName">Name</label>
+            <input id="userName" required>
+
+            <label for="userEmail">Email</label>
+            <input id="userEmail" type="email" required>
+
+            <label for="userRole">Role</label>
+            <select id="userRole">
+                <option value="admin">Admin</option>
+                <option value="warehouse">Warehouse</option>
+                <option value="purchasing">Purchasing</option>
+            </select>
+
+            <label for="userStatus">Status</label>
+            <select id="userStatus">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+
+            <div id="newUserPasswordWrap">
+                <label for="userPassword">Temporary password</label>
+                <input id="userPassword" type="password">
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="secondary-button" data-close-modal="userModal">Cancel</button>
+                <button type="submit" class="primary-button">Save User</button>
             </div>
         </form>
     </div>
