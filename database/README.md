@@ -4,27 +4,26 @@
 
 ## Fresh installation
 
-1. Create an empty `stockflow` database.
+1. Create an empty database named `stockflow`.
 2. Import `schema.sql`.
 3. Optionally import `seed.sql`.
 4. Configure `backend/.env`.
-5. Run `npm install` in `backend`.
+5. Run `npm install` inside `backend`.
 6. Run `node createAdmin.js`.
-7. Start with `npm start`.
+7. Start StockFlow with `npm start`.
 
-## Upgrade from v0.5 to v0.6
+## Existing database upgrades
 
-Run once in HeidiSQL:
+This portfolio project uses a complete `schema.sql` for fresh installations and small manual SQL upgrade files for existing local development databases.
+
+Historical upgrade files:
 
 ```text
-database/upgrade-v0.5-to-v0.6.sql
+upgrade-v0.3-to-v0.4.sql
+upgrade-v0.4-to-v0.5.sql
+upgrade-v0.5-to-v0.6.sql
 ```
 
-This creates:
+If your existing database already worked on StockFlow v0.6, **no additional database change is required for v1.0**.
 
-- `app_settings`
-- `admin_audit`
-
-and inserts default application settings.
-
-No JavaScript migration files are used.
+No JavaScript migration scripts are used.

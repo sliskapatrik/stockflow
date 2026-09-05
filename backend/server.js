@@ -57,13 +57,13 @@ app.get("/health", async function (req, res) {
         res.json({
             status: "ok",
             database: "connected",
-            version: "0.6.0"
+            version: "1.0.0"
         });
     } catch (error) {
         res.status(503).json({
             status: "error",
             database: "disconnected",
-            version: "0.6.0"
+            version: "1.0.0"
         });
     }
 });
@@ -72,7 +72,7 @@ app.get("/api/status", function (req, res) {
     res.json({
         success: true,
         message: "StockFlow backend is online",
-        version: "0.6.0"
+        version: "1.0.0"
     });
 });
 
@@ -96,6 +96,23 @@ app.use("/api", function (req, res) {
     res.status(404).json({ error: "API endpoint not found" });
 });
 
-app.listen(PORT, function () {
-    console.log(`StockFlow v0.6 running on http://localhost:${PORT}`);
+const server = app.listen(PORT, function () {
+    console.log(`StockFlow v1.0 running on http://localhost:${PORT}`);
 });
+
+async function gracefulShutdown(signal) {
+    console.log(`${signal} received. Closing StockFlow...`);
+
+    server.close(async function () {
+        try {
+            await db.end();
+        } catch (error) {
+            console.error("Database shutdown error:", error.message);
+        }
+
+        process.exit(0);
+    });
+}
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));

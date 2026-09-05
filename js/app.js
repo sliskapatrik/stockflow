@@ -2307,3 +2307,28 @@ async function loadSystemOverview() {
         console.error(error);
     }
 }
+
+
+/* =========================================================
+   FINAL UX HELPERS
+========================================================= */
+
+function showPageError(message) {
+    console.error(message);
+}
+
+function setButtonBusy(button, busy, busyText = "Working...") {
+    if (!button) return;
+
+    if (busy) {
+        button.dataset.originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = busyText;
+    } else {
+        button.disabled = false;
+        if (button.dataset.originalText) {
+            button.textContent = button.dataset.originalText;
+            delete button.dataset.originalText;
+        }
+    }
+}

@@ -1,4 +1,4 @@
--- StockFlow complete database schema v0.6
+-- StockFlow complete database schema v1.0
 -- Import into an EMPTY MySQL/MariaDB database named `stockflow`.
 
 SET NAMES utf8mb4;

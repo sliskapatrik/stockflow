@@ -553,3 +553,117 @@ textarea { min-height: 100px; resize: vertical; }
         max-width: none;
     }
 }
+
+
+/* =========================================================
+   StockFlow v1.0 final responsive / scrolling fixes
+========================================================= */
+
+html,
+body {
+    width: 100%;
+    min-height: 100%;
+}
+
+html {
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+body {
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+/* The application may be wider than a very small viewport.
+   In that case the browser itself must remain scrollable. */
+.app {
+    min-width: 100%;
+    width: max-content;
+}
+
+.main {
+    min-width: 760px;
+}
+
+/* Sidebar gets its own vertical scroll if the menu exceeds viewport height. */
+.sidebar {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Tables and dense toolbars must never make content inaccessible. */
+.panel,
+.view,
+.main {
+    max-width: none;
+}
+
+.order-table {
+    min-width: 720px;
+}
+
+.order-table,
+.report-toolbar,
+.toolbar {
+    max-width: none;
+}
+
+.table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+/* Preserve correct modal behavior:
+   page locked while modal is open, modal scrolls internally. */
+body.modal-open {
+    overflow: hidden !important;
+}
+
+.modal {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.modal-content {
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+/* Better small-screen behavior */
+@media (max-width: 900px) {
+    .main {
+        min-width: 680px;
+    }
+
+    .topbar {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 700px) {
+    .sidebar {
+        width: 180px;
+    }
+
+    .main {
+        margin-left: 180px;
+        min-width: 620px;
+        padding: 18px;
+    }
+}
+
+@media (max-width: 520px) {
+    .sidebar {
+        width: 165px;
+    }
+
+    .main {
+        margin-left: 165px;
+        min-width: 560px;
+        padding: 14px;
+    }
+}
